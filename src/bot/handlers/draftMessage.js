@@ -103,10 +103,18 @@ async function setupChannel(ctx, userId, text) {
     return;
   }
 
+  // Resolve @username to numeric ID
+  try {
+    const chat = await ctx.telegram.getChat(channelId);
+    channelId = chat.id;
+  } catch (err) {
+    await ctx.reply('Не могу найти канал. Убедись, что username верный и бот добавлен в канал.');
+    return;
+  }
+
   // Check if bot is admin in channel
   try {
     const member = await ctx.telegram.getChatMember(channelId, ctx.botInfo.id);
-    console.log(`getChatMember(${channelId}, ${ctx.botInfo.id}):`, JSON.stringify(member));
     if (!member || (member.status !== 'administrator' && member.status !== 'creator')) {
       await ctx.reply(
         'Добавь меня как администратора в канал (нужно право "Публикация сообщений"), затем повтори.'
@@ -114,7 +122,6 @@ async function setupChannel(ctx, userId, text) {
       return;
     }
   } catch (err) {
-    console.error(`getChatMember error for ${channelId}:`, err.message);
     await ctx.reply('Не могу проверить права в канале. Добавь меня админом и повтори.');
     return;
   }
@@ -141,6 +148,17 @@ async function setupGroup(ctx, userId, text) {
   } else {
     await ctx.reply('Пожалуйста, пришли сообщение из группы или напиши @username.');
     return;
+  }
+
+  // Resolve @username to numeric ID
+  if (typeof groupId === 'string' && groupId.startsWith('@')) {
+    try {
+      const chat = await ctx.telegram.getChat(groupId);
+      groupId = chat.id;
+    } catch (err) {
+      await ctx.reply('Не могу найти группу. Убедись, что username верный и бот добавлен в группу.');
+      return;
+    }
   }
 
   // Check if bot is member in group
