@@ -20,18 +20,31 @@ export async function handleDraftMessage(ctx) {
 
 async function handleSetupMessage(ctx, text) {
   const userId = ctx.from.id;
-  const step = ctx.session.setupStep;
+  const setupStep = ctx.session.setupStep;
+  const combineStep = ctx.session.combineStep;
 
-  if (!step) return; // No setup in progress
+  if (combineStep === 'selecting') {
+    // Import here to avoid circular dependency
+    const { handleCombineSelection } = await import('../commands/combine.js');
+    try {
+      await handleCombineSelection(ctx, text);
+    } catch (err) {
+      console.error('Combine error:', err);
+      await ctx.reply('Ошибка при сборке поста: ' + err.message);
+    }
+    return;
+  }
+
+  if (!setupStep) return; // No setup in progress
 
   try {
-    if (step === 'channel') {
+    if (setupStep === 'channel') {
       await setupChannel(ctx, userId, text);
-    } else if (step === 'group') {
+    } else if (setupStep === 'group') {
       await setupGroup(ctx, userId, text);
-    } else if (step === 'time') {
+    } else if (setupStep === 'time') {
       await setupReminderTime(ctx, userId, text);
-    } else if (step === 'timezone') {
+    } else if (setupStep === 'timezone') {
       await setupTimezone(ctx, userId, text);
     }
   } catch (err) {
