@@ -131,22 +131,23 @@ async function setupChannel(ctx, userId, text) {
   if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'group';
   await ctx.reply(
-    'Спасибо! Канал настроен.\n\n' +
-    'Теперь пришли @username или перешли сообщение из группы, где ведёшь черновики.'
+    '✅ Канал для публикаций настроен.\n\n' +
+    '2️⃣ Теперь создай отдельный канал для черновиков (например, «Мои черновики»), добавь меня туда администратором с правом «Публикация сообщений».\n\n' +
+    'Затем напиши @username этого канала или перешли из него любое сообщение.'
   );
 }
 
 async function setupGroup(ctx, userId, text) {
   let groupId = null;
 
-  // Check if forwarded message
-  if (ctx.message.forward_origin && ctx.message.forward_origin.type === 'supergroup') {
+  // Check if forwarded message from channel
+  if (ctx.message.forward_origin && ctx.message.forward_origin.type === 'channel') {
     groupId = ctx.message.forward_origin.chat.id;
   } else if (text.startsWith('@')) {
     // Parse @username
     groupId = text;
   } else {
-    await ctx.reply('Пожалуйста, пришли сообщение из группы или напиши @username.');
+    await ctx.reply('Пожалуйста, напиши @username канала черновиков или перешли из него любое сообщение.');
     return;
   }
 
@@ -156,26 +157,31 @@ async function setupGroup(ctx, userId, text) {
       const chat = await ctx.telegram.getChat(groupId);
       groupId = chat.id;
     } catch (err) {
-      await ctx.reply('Не могу найти группу. Убедись, что username верный и бот добавлен в группу.');
+      await ctx.reply('Не могу найти канал. Убедись, что username верный и бот добавлен в канал черновиков.');
       return;
     }
   }
 
-  // Check if bot is member in group
+  // Check if bot is admin in draft channel
   try {
-    await ctx.telegram.getChatMember(groupId, ctx.botInfo.id);
+    const member = await ctx.telegram.getChatMember(groupId, ctx.botInfo.id);
+    if (!member || (member.status !== 'administrator' && member.status !== 'creator')) {
+      await ctx.reply('Добавь меня как администратора в канал черновиков (нужно право «Публикация сообщений»), затем повтори.');
+      return;
+    }
   } catch (err) {
-    await ctx.reply('Добавь меня в группу черновиков, затем повтори.');
+    await ctx.reply('Не могу проверить права в канале черновиков. Добавь меня админом и повтори.');
     return;
   }
 
-  // Save group and finish setup
+  // Save draft channel and finish setup
   await updateUser(userId, { draft_group_id: groupId });
   if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = null;
   await ctx.reply(
-    'Готово! Настройки сохранены.\n\n' +
-    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow).\n' +
+    '✅ Всё готово! Настройки сохранены.\n\n' +
+    'Пиши черновики в канал черновиков — я буду отслеживать твой прогресс.\n' +
+    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow).\n\n' +
     'Поменять время и другие настройки: /settings\n' +
     'Настроить AI-ассистента: /setai'
   );
