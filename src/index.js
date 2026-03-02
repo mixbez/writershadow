@@ -8,6 +8,8 @@ const server = Fastify({ logger: true });
 await runMigrations();
 startScheduler();
 
+let botStarted = false;
+
 if (process.env.NODE_ENV === 'production') {
   server.post('/ws-webhook', async (req, reply) => {
     await bot.handleUpdate(req.body);
@@ -18,8 +20,13 @@ if (process.env.NODE_ENV === 'production') {
   console.log('Webhook set:', process.env.BOT_WEBHOOK_URL);
 } else {
   await bot.launch();
+  botStarted = true;
   console.log('Bot started in polling mode');
 }
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  if (botStarted) bot.stop('SIGINT');
+});
+process.once('SIGTERM', () => {
+  if (botStarted) bot.stop('SIGTERM');
+});
