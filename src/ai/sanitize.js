@@ -1,6 +1,17 @@
-// Placeholder - implemented in Step 11
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+|previous\s+|above\s+)?instructions/gi,
+  /you\s+are\s+now/gi,
+  /forget\s+(everything|all|your\s+instructions)/gi,
+  /\bsystem\s*prompt\b/gi,
+  /\bnew\s+instructions?\b/gi,
+  /\bpretend\s+(you|to\s+be)\b/gi,
+  /\bact\s+as\b/gi,
+  /\bjailbreak\b/gi,
+  /\bdan\b.*mode/gi,
+];
+
 export function detectInjection(text) {
-  return false;
+  return INJECTION_PATTERNS.some((p) => p.test(text));
 }
 
 export function escapeXml(text) {

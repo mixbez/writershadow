@@ -15,11 +15,22 @@ export async function handleCallbackQuery(ctx) {
       await handleCancelPost(ctx, data);
     } else if (data.startsWith('toggle_')) {
       await handleToggleSetting(ctx, data);
+    } else if (data.startsWith('setai_')) {
+      await handleSetAiCallback(ctx, data);
+    } else if (data === 'subscribe') {
+      // Will be handled by subscribeCommand callback
     }
   } catch (err) {
     console.error('Callback error:', err);
     await ctx.answerCbQuery('Ошибка при обработке действия');
   }
+}
+
+async function handleSetAiCallback(ctx, data) {
+  const provider = data.split('_')[1]; // e.g., 'groq', 'anthropic', 'paid', 'none'
+  const { handleSetAiProvider } = await import('../commands/setai.js');
+  await handleSetAiProvider(ctx, provider);
+  await ctx.answerCbQuery();
 }
 
 async function handlePublishPost(ctx, data) {

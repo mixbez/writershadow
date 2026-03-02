@@ -22,6 +22,7 @@ async function handleSetupMessage(ctx, text) {
   const userId = ctx.from.id;
   const setupStep = ctx.session.setupStep;
   const combineStep = ctx.session.combineStep;
+  const aiSetupStep = ctx.session.aiSetupStep;
 
   if (combineStep === 'selecting') {
     // Import here to avoid circular dependency
@@ -31,6 +32,17 @@ async function handleSetupMessage(ctx, text) {
     } catch (err) {
       console.error('Combine error:', err);
       await ctx.reply('Ошибка при сборке поста: ' + err.message);
+    }
+    return;
+  }
+
+  if (aiSetupStep === 'key') {
+    const { handleAiKeyInput } = await import('../commands/setai.js');
+    try {
+      await handleAiKeyInput(ctx, text);
+    } catch (err) {
+      console.error('AI setup error:', err);
+      await ctx.reply('Ошибка при настройке AI: ' + err.message);
     }
     return;
   }
