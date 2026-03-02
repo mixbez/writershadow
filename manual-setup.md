@@ -178,7 +178,7 @@ v2202504269079335176.supersrv.de {
       BOT_WEBHOOK_URL: https://v2202504269079335176.supersrv.de/ws-webhook
       DATABASE_URL: postgresql://writershadow:${WRITERSHADOW_DB_PASS}@postgres:5432/writershadow
       REDIS_URL: redis://redis:6379
-      REDIS_KEY_PREFIX: writershadow:
+      REDIS_KEY_PREFIX: "writershadow:"
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ADMIN_USER_ID: ${ADMIN_USER_ID}
@@ -186,8 +186,6 @@ v2202504269079335176.supersrv.de {
     depends_on:
       - postgres
       - redis
-    networks:
-      - app-network
 ```
 
 ---
