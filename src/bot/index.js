@@ -16,6 +16,16 @@ export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.use(session());
 
+// Логирование всех обновлений
+bot.use((ctx, next) => {
+  console.log('Bot received:', {
+    type: ctx.updateType,
+    command: ctx.message?.text,
+    from: ctx.from?.username || ctx.from?.id
+  });
+  return next();
+});
+
 bot.command('start', startCommand);
 bot.command('settings', settingsCommand);
 bot.command('setai', setaiCommand);

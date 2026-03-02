@@ -12,8 +12,14 @@ let botStarted = false;
 
 if (process.env.NODE_ENV === 'production') {
   server.post('/ws-webhook', async (req, reply) => {
-    await bot.handleUpdate(req.body);
-    return { ok: true };
+    try {
+      console.log('Webhook received update:', req.body.message?.text || req.body.callback_query?.data || 'unknown');
+      await bot.handleUpdate(req.body);
+      return { ok: true };
+    } catch (error) {
+      console.error('Webhook error:', error);
+      return { ok: false, error: error.message };
+    }
   });
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
   await bot.telegram.setWebhook(process.env.BOT_WEBHOOK_URL);
