@@ -15,6 +15,7 @@ export async function startCommand(ctx) {
   }
 
   // Initialize setup session
+  if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'channel';
   await ctx.reply(
     'Привет! Я WriterShadow — помогаю писать регулярно. Давай настроим.\n\n' +

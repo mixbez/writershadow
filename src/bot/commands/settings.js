@@ -50,9 +50,11 @@ export async function handleSettingsCallback(ctx, action) {
   const userId = ctx.from.id;
 
   if (action === 'time') {
+    if (!ctx.session) ctx.session = {};
     ctx.session.settingsStep = 'time';
     await ctx.editMessageText('Введи время в формате HH:MM (например: 09:00)');
   } else if (action === 'reconfigure') {
+    if (!ctx.session) ctx.session = {};
     ctx.session.setupStep = 'channel';
     await ctx.editMessageText(
       'Давай переделаем настройку.\n\n' +
@@ -70,6 +72,7 @@ export async function handleSettingsTimeInput(ctx, text) {
     return;
   }
 
+  if (!ctx.session) ctx.session = {};
   ctx.session.pendingReminderTime = text;
   ctx.session.settingsStep = 'timezone';
   await ctx.reply('Твой часовой пояс? (например: Europe/Moscow, или пришли геолокацию)');

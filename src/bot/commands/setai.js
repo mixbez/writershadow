@@ -61,6 +61,7 @@ export async function handleSetAiProvider(ctx, provider) {
       '2. Создай API key\n' +
       '3. Пришли его сюда:'
     );
+    if (!ctx.session) ctx.session = {};
     ctx.session.aiSetupProvider = 'groq';
     ctx.session.aiSetupStep = 'key';
     return;
@@ -73,6 +74,7 @@ export async function handleSetAiProvider(ctx, provider) {
       '2. Создай API key в разделе API Keys\n' +
       '3. Пришли его сюда:'
     );
+    if (!ctx.session) ctx.session = {};
     ctx.session.aiSetupProvider = 'anthropic';
     ctx.session.aiSetupStep = 'key';
     return;
@@ -81,6 +83,7 @@ export async function handleSetAiProvider(ctx, provider) {
 
 export async function handleAiKeyInput(ctx, text) {
   const userId = ctx.from.id;
+  if (!ctx.session) ctx.session = {};
   const provider = ctx.session.aiSetupProvider;
 
   if (!provider) {

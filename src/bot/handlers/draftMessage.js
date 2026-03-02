@@ -20,6 +20,7 @@ export async function handleDraftMessage(ctx) {
 
 async function handleSetupMessage(ctx, text) {
   const userId = ctx.from.id;
+  if (!ctx.session) ctx.session = {};
   const setupStep = ctx.session.setupStep;
   const combineStep = ctx.session.combineStep;
   const aiSetupStep = ctx.session.aiSetupStep;
@@ -118,6 +119,7 @@ async function setupChannel(ctx, userId, text) {
 
   // Save channel and move to next step
   await updateUser(userId, { blog_channel_id: channelId });
+  if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'group';
   await ctx.reply(
     'Спасибо! Канал настроен.\n\n' +
@@ -149,6 +151,7 @@ async function setupGroup(ctx, userId, text) {
 
   // Save group and finish setup
   await updateUser(userId, { draft_group_id: groupId });
+  if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = null;
   await ctx.reply(
     'Готово! Настройки сохранены.\n\n' +
@@ -165,16 +168,19 @@ async function setupReminderTime(ctx, userId, text) {
     return;
   }
 
+  if (!ctx.session) ctx.session = {};
   ctx.session.pendingReminderTime = text;
   ctx.session.settingsStep = 'timezone';
   await ctx.reply('Твой часовой пояс? (например: Europe/Moscow, или пришли геолокацию)');
 }
 
 async function setupTimezone(ctx, userId, text) {
+  if (!ctx.session) ctx.session = {};
   const reminderTime = ctx.session.pendingReminderTime;
 
   if (!reminderTime) {
     await ctx.reply('Что-то пошло не так. Используй /settings чтобы переделать.');
+    if (!ctx.session) ctx.session = {};
     ctx.session.settingsStep = null;
     return;
   }
