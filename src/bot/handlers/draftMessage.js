@@ -106,7 +106,7 @@ async function setupChannel(ctx, userId, text) {
   // Check if bot is admin in channel
   try {
     const member = await ctx.telegram.getChatMember(channelId, ctx.botInfo.id);
-    if (!member || !member.is_administrator) {
+    if (!member || (member.status !== 'administrator' && member.status !== 'creator')) {
       await ctx.reply(
         'Добавь меня как администратора в канал (нужно право "Публикация сообщений"), затем повтори.'
       );
