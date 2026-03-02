@@ -1,4 +1,6 @@
 import { Telegraf, session } from 'telegraf';
+import RedisSession from 'telegraf-session-redis';
+import { redis } from '../redis/client.js';
 import { startCommand } from './commands/start.js';
 import { settingsCommand } from './commands/settings.js';
 import { setaiCommand } from './commands/setai.js';
@@ -14,7 +16,18 @@ import { handleCallbackQuery } from './handlers/callbackQuery.js';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
-bot.use(session());
+// Use Redis for session storage (persists across webhook calls)
+const redisSession = new RedisSession({
+  store: redis,
+  property: 'session',
+  ttl: 86400 * 7, // 7 days
+  getSessionKey: (ctx) => {
+    const id = ctx.from?.id ?? ctx.chat?.id;
+    return `telegram:session:${id}`;
+  },
+});
+
+bot.use(redisSession);
 
 bot.command('start', startCommand);
 bot.command('settings', settingsCommand);
