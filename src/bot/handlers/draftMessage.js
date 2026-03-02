@@ -5,8 +5,14 @@ import { redis } from '../../redis/client.js';
 
 // This handler is used in both private chat (for setup) and draft group (for tracking)
 export async function handleDraftMessage(ctx) {
-  // Skip if no text
   const text = ctx.message.text || ctx.message.caption || '';
+  const location = ctx.message.location;
+
+  // Handle geolocation in private chat (for timezone setup)
+  if (location && ctx.chat.type === 'private') {
+    return handleLocationMessage(ctx, location);
+  }
+
   if (!text) return;
 
   // Check if in private chat (setup flow)
@@ -16,6 +22,22 @@ export async function handleDraftMessage(ctx) {
 
   // Otherwise, track as draft in group
   await handleDraftInGroup(ctx, text);
+}
+
+async function handleLocationMessage(ctx, location) {
+  if (!ctx.session) ctx.session = {};
+  const isTimezoneStep =
+    ctx.session.settingsStep === 'timezone' ||
+    ctx.session.setupStep === 'timezone';
+  if (!isTimezoneStep) return;
+
+  const { resolveTimezoneFromCoords } = await import('../../utils/timezone.js');
+  const timezone = await resolveTimezoneFromCoords(location.latitude, location.longitude);
+  if (!timezone) {
+    await ctx.reply('Не удалось определить часовой пояс по геолокации. Напиши название города или Europe/Budapest.');
+    return;
+  }
+  await applyTimezone(ctx, timezone);
 }
 
 async function handleSetupMessage(ctx, text) {
@@ -206,22 +228,44 @@ async function setupTimezone(ctx, userId, text) {
 
   if (!reminderTime) {
     await ctx.reply('Что-то пошло не так. Используй /settings чтобы переделать.');
-    if (!ctx.session) ctx.session = {};
     ctx.session.settingsStep = null;
     return;
   }
 
-  // For now, just accept timezone as text (validation can be improved)
-  const timezone = text.trim() || 'Europe/Moscow';
+  const { resolveTimezoneFromText } = await import('../../utils/timezone.js');
+  const timezone = resolveTimezoneFromText(text);
+  if (!timezone) {
+    await ctx.reply(
+      'Не могу распознать часовой пояс. Напиши название города (например: Budapest, Moscow) ' +
+      'или IANA-зону (Europe/Budapest), или пришли геолокацию.'
+    );
+    return;
+  }
 
-  await updateUser(userId, {
-    reminder_time: reminderTime,
-    timezone,
-  });
-
+  await updateUser(userId, { reminder_time: reminderTime, timezone });
   ctx.session.settingsStep = null;
   ctx.session.pendingReminderTime = null;
-  await ctx.reply(`Настройки сохранены! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
+  await ctx.reply(`✅ Сохранено! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
+}
+
+// Shared helper: save timezone after it's resolved (used by both text and location flows)
+async function applyTimezone(ctx, timezone) {
+  if (!ctx.session) ctx.session = {};
+  const userId = ctx.from.id;
+  const reminderTime = ctx.session.pendingReminderTime;
+
+  if (!reminderTime) {
+    await ctx.reply('Что-то пошло не так. Используй /settings чтобы переделать.');
+    ctx.session.settingsStep = null;
+    ctx.session.setupStep = null;
+    return;
+  }
+
+  await updateUser(userId, { reminder_time: reminderTime, timezone });
+  ctx.session.settingsStep = null;
+  ctx.session.setupStep = null;
+  ctx.session.pendingReminderTime = null;
+  await ctx.reply(`✅ Сохранено! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
 }
 
 async function handleDraftInGroup(ctx, text) {

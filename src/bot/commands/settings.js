@@ -88,14 +88,18 @@ export async function handleSettingsTimezoneInput(ctx, text) {
     return;
   }
 
-  const timezone = text.trim() || 'Europe/Moscow';
+  const { resolveTimezoneFromText } = await import('../../utils/timezone.js');
+  const timezone = resolveTimezoneFromText(text);
+  if (!timezone) {
+    await ctx.reply(
+      'Не могу распознать часовой пояс. Напиши название города (например: Budapest, Moscow) ' +
+      'или IANA-зону (Europe/Budapest), или пришли геолокацию.'
+    );
+    return;
+  }
 
-  await updateUser(userId, {
-    reminder_time: reminderTime,
-    timezone,
-  });
-
+  await updateUser(userId, { reminder_time: reminderTime, timezone });
   ctx.session.settingsStep = null;
   ctx.session.pendingReminderTime = null;
-  await ctx.reply(`Настройки сохранены! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
+  await ctx.reply(`✅ Сохранено! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
 }
