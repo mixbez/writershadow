@@ -111,6 +111,12 @@ docker exec -it <имя postgres-контейнера> psql -U postgres
 CREATE DATABASE writershadow;
 CREATE USER writershadow WITH PASSWORD 'ПРИДУМАЙ_НАДЁЖНЫЙ_ПАРОЛЬ';
 GRANT ALL PRIVILEGES ON DATABASE writershadow TO writershadow;
+\c writershadow
+GRANT ALL PRIVILEGES ON SCHEMA public TO writershadow;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO writershadow;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO writershadow;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO writershadow;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO writershadow;
 \q
 ```
 
