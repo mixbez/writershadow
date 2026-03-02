@@ -1,3 +1,4 @@
+import 'dotenv/config.js';
 import Fastify from 'fastify';
 import { bot } from './bot/index.js';
 import { startScheduler } from './scheduler/reminders.js';
@@ -32,8 +33,14 @@ if (process.env.NODE_ENV === 'production') {
   });
 
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
-  await bot.telegram.setWebhook(process.env.BOT_WEBHOOK_URL);
-  console.log('Webhook set:', process.env.BOT_WEBHOOK_URL);
+
+  try {
+    await bot.telegram.setWebhook(process.env.BOT_WEBHOOK_URL);
+    console.log('Webhook set:', process.env.BOT_WEBHOOK_URL);
+  } catch (error) {
+    console.warn('Failed to set webhook:', error.message);
+    console.log('Webhook mode ready on /ws-webhook but not registered with Telegram');
+  }
 } else {
   await bot.launch();
   botStarted = true;
