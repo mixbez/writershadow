@@ -23,6 +23,7 @@ async function handleSetupMessage(ctx, text) {
   const setupStep = ctx.session.setupStep;
   const combineStep = ctx.session.combineStep;
   const aiSetupStep = ctx.session.aiSetupStep;
+  const settingsStep = ctx.session.settingsStep;
 
   if (combineStep === 'selecting') {
     // Import here to avoid circular dependency
@@ -43,6 +44,28 @@ async function handleSetupMessage(ctx, text) {
     } catch (err) {
       console.error('AI setup error:', err);
       await ctx.reply('Ошибка при настройке AI: ' + err.message);
+    }
+    return;
+  }
+
+  if (settingsStep === 'time') {
+    const { handleSettingsTimeInput } = await import('../commands/settings.js');
+    try {
+      await handleSettingsTimeInput(ctx, text);
+    } catch (err) {
+      console.error('Settings error:', err);
+      await ctx.reply('Ошибка при настройке: ' + err.message);
+    }
+    return;
+  }
+
+  if (settingsStep === 'timezone') {
+    const { handleSettingsTimezoneInput } = await import('../commands/settings.js');
+    try {
+      await handleSettingsTimezoneInput(ctx, text);
+    } catch (err) {
+      console.error('Settings error:', err);
+      await ctx.reply('Ошибка при настройке: ' + err.message);
     }
     return;
   }

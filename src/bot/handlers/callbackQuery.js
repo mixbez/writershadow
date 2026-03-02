@@ -17,6 +17,8 @@ export async function handleCallbackQuery(ctx) {
       await handleToggleSetting(ctx, data);
     } else if (data.startsWith('setai_')) {
       await handleSetAiCallback(ctx, data);
+    } else if (data.startsWith('settings_')) {
+      await handleSettingsCallback(ctx, data);
     } else if (data === 'subscribe') {
       // Will be handled by subscribeCommand callback
     }
@@ -24,6 +26,13 @@ export async function handleCallbackQuery(ctx) {
     console.error('Callback error:', err);
     await ctx.answerCbQuery('Ошибка при обработке действия');
   }
+}
+
+async function handleSettingsCallback(ctx, data) {
+  const action = data.split('_')[1]; // e.g., 'time', 'reconfigure'
+  const { handleSettingsCallback: handleSettings } = await import('../commands/settings.js');
+  await handleSettings(ctx, action);
+  await ctx.answerCbQuery();
 }
 
 async function handleSetAiCallback(ctx, data) {
