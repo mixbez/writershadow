@@ -31,18 +31,3 @@ export function resolveTimezoneFromText(input) {
   return null;
 }
 
-/**
- * Resolves lat/lon coordinates to an IANA timezone using the free timeapi.io.
- * Returns null on failure.
- */
-export async function resolveTimezoneFromCoords(lat, lon) {
-  try {
-    const url = `https://timeapi.io/api/TimeZone/coordinate?latitude=${lat}&longitude=${lon}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.timeZone || null;
-  } catch (e) {
-    return null;
-  }
-}

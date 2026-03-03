@@ -75,7 +75,7 @@ export async function handleSettingsTimeInput(ctx, text) {
   if (!ctx.session) ctx.session = {};
   ctx.session.pendingReminderTime = text;
   ctx.session.settingsStep = 'timezone';
-  await ctx.reply('Твой часовой пояс? (например: Europe/Moscow, или пришли геолокацию)');
+  await ctx.reply('В каком городе ты живёшь? (например: Budapest, Moscow, Berlin)');
 }
 
 export async function handleSettingsTimezoneInput(ctx, text) {
@@ -91,10 +91,7 @@ export async function handleSettingsTimezoneInput(ctx, text) {
   const { resolveTimezoneFromText } = await import('../../utils/timezone.js');
   const timezone = resolveTimezoneFromText(text);
   if (!timezone) {
-    await ctx.reply(
-      'Не могу распознать часовой пояс. Напиши название города (например: Budapest, Moscow) ' +
-      'или IANA-зону (Europe/Budapest), или пришли геолокацию.'
-    );
+    await ctx.reply('Не могу найти город. Попробуй написать на английском (Budapest, Moscow, Berlin).');
     return;
   }
 
