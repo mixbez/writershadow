@@ -112,7 +112,7 @@ async function sendDailyReminder(user) {
       const posts = await getRecentPublishedPosts(user.id, 15);
       if (posts.length >= 3) {
         const suggestion = await generateSuggestion(posts, user);
-        text += `\n\n💡 Идея для поста:\n${suggestion}`;
+        text += `\n\n💡 Идея для поста:\n${suggestion}\n\n📝 Напиши черновик: /new`;
       }
     } catch (err) {
       console.warn(`Failed to generate suggestion for user ${user.id}:`, err.message);
