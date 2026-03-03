@@ -1,5 +1,6 @@
 import { Telegraf } from 'telegraf';
 import { redisSessionMiddleware } from './middleware/redisSession.js';
+import { commandLoggerMiddleware } from './middleware/commandLogger.js';
 import { startCommand } from './commands/start.js';
 import { settingsCommand } from './commands/settings.js';
 import { setaiCommand } from './commands/setai.js';
@@ -20,6 +21,9 @@ export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 // Use Redis for session storage (persists across webhook calls)
 bot.use(redisSessionMiddleware());
+
+// Log all commands
+bot.use(commandLoggerMiddleware());
 
 bot.command('start', startCommand);
 bot.command('settings', settingsCommand);

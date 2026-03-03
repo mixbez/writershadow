@@ -5,14 +5,21 @@ import { dirname, join } from 'path';
 import { bot } from './bot/index.js';
 import { startScheduler } from './scheduler/reminders.js';
 import { runMigrations } from './db/index.js';
-import { getAnalyticsData, getGlobalStats } from './api/analytics.js';
+import {
+  getAnalyticsData,
+  getGlobalStats,
+  getCommandStats,
+  getDailyActiveUsers,
+  getRecentLogs,
+  getConversionFunnel,
+  getTopUsers
+} from './api/analytics.js';
 
 const server = Fastify({ logger: true });
 const __dir = dirname(fileURLToPath(import.meta.url));
 
 await runMigrations();
 startScheduler();
-await setupAnalyticsRoutes(server);
 
 // Register static file serving for public directory
 server.register(fastifyStatic, {
@@ -20,7 +27,7 @@ server.register(fastifyStatic, {
   prefix: '/',
 });
 
-// Analytics API endpoint
+// Analytics API endpoints
 server.get('/api/analytics', async (req, reply) => {
   try {
     const { from, to } = req.query;
@@ -33,6 +40,81 @@ server.get('/api/analytics', async (req, reply) => {
     const global = await getGlobalStats(from, to);
 
     return { global, users };
+  } catch (error) {
+    server.log.error(error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+server.get('/api/analytics/commands', async (req, reply) => {
+  try {
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return reply.status(400).send({ error: 'Missing from or to date' });
+    }
+
+    const commands = await getCommandStats(from, to);
+    return { commands };
+  } catch (error) {
+    server.log.error(error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+server.get('/api/analytics/timeline', async (req, reply) => {
+  try {
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return reply.status(400).send({ error: 'Missing from or to date' });
+    }
+
+    const timeline = await getDailyActiveUsers(from, to);
+    return { timeline };
+  } catch (error) {
+    server.log.error(error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+server.get('/api/analytics/recent', async (req, reply) => {
+  try {
+    const { limit = 100 } = req.query;
+    const recent = await getRecentLogs(parseInt(limit, 10));
+    return { recent };
+  } catch (error) {
+    server.log.error(error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+server.get('/api/analytics/funnel', async (req, reply) => {
+  try {
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return reply.status(400).send({ error: 'Missing from or to date' });
+    }
+
+    const funnel = await getConversionFunnel(from, to);
+    return funnel;
+  } catch (error) {
+    server.log.error(error);
+    return reply.status(500).send({ error: error.message });
+  }
+});
+
+server.get('/api/analytics/top-users', async (req, reply) => {
+  try {
+    const { from, to, limit = 20 } = req.query;
+
+    if (!from || !to) {
+      return reply.status(400).send({ error: 'Missing from or to date' });
+    }
+
+    const users = await getTopUsers(from, to, parseInt(limit, 10));
+    return { users };
   } catch (error) {
     server.log.error(error);
     return reply.status(500).send({ error: error.message });
