@@ -3,6 +3,8 @@ import { bot } from '../bot/index.js';
 import { query } from '../db/index.js';
 import { getTodayStats, getStatsForPeriod } from '../db/models/dailyStats.js';
 import { redis } from '../redis/client.js';
+import { generateSuggestion } from '../ai/provider.js';
+import { getRecentPublishedPosts } from '../db/models/post.js';
 
 export function startScheduler() {
   // Every 5 minutes: daily reminders + evening nudge
@@ -102,6 +104,25 @@ async function sendDailyReminder(user) {
   } else {
     text += 'Сегодня ещё ничего не написано. Начни с одного предложения.';
   }
+
+  // Add AI suggestion or prompt to set up AI
+  if (user.ai_provider !== 'none') {
+    // User has AI configured
+    try {
+      const posts = await getRecentPublishedPosts(user.id, 15);
+      if (posts.length >= 3) {
+        const suggestion = await generateSuggestion(posts, user);
+        text += `\n\n💡 Идея для поста:\n${suggestion}`;
+      }
+    } catch (err) {
+      console.warn(`Failed to generate suggestion for user ${user.id}:`, err.message);
+      // Don't include suggestion if generation fails, just send base message
+    }
+  } else {
+    // AI not configured
+    text += '\n\nЕсли нет идей о чем писать, настрой AI-ассистента, чтобы он подсказал новую тему, основываясь на твоих имеющихся текстах: /setai';
+  }
+
   try {
     await bot.telegram.sendMessage(user.telegram_user_id, text);
     console.log(`Reminder sent to user ${user.id} (tg: ${user.telegram_user_id})`);
