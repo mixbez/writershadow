@@ -29,7 +29,7 @@ export function redisSessionMiddleware() {
       // Save session back to Redis (7 days TTL)
       if (ctx.session && Object.keys(ctx.session).length > 0) {
         try {
-          await redis.set(sessionKey, JSON.stringify(ctx.session), 86400 * 7);
+          await redis.set(sessionKey, JSON.stringify(ctx.session), { EX: 86400 * 7 });
         } catch (err) {
           console.error(`Failed to save session for user ${userId}:`, err);
         }

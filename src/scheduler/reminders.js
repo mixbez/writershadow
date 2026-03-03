@@ -18,16 +18,20 @@ export function startScheduler() {
 }
 
 function getUserLocalTime(timezone) {
-  const now = new Date();
-  const formatted = new Intl.DateTimeFormat('en-GB', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(now);
-  const [hh, mm] = formatted.split(':').map(Number);
-  const slot = Math.floor(mm / 5) * 5;
-  return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
+  try {
+    const now = new Date();
+    const formatted = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(now);
+    const [hh, mm] = formatted.split(':').map(Number);
+    const slot = Math.floor(mm / 5) * 5;
+    return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
+  } catch {
+    return null; // invalid timezone — skip this user
+  }
 }
 
 async function checkReminders() {
@@ -48,7 +52,7 @@ async function checkReminders() {
         const lockKey = `reminder:${user.id}:${today}`;
         const sent = await redis.get(lockKey);
         if (sent) continue;
-        await redis.set(lockKey, '1', 86400);
+        await redis.set(lockKey, '1', { EX: 86400 });
         await sendDailyReminder(user);
       }
 
@@ -61,7 +65,7 @@ async function checkReminders() {
           if (nudgeSent) continue;
           const stats = await getTodayStats(user.id);
           if (!stats || stats.chars_written === 0) {
-            await redis.set(nudgeLock, '1', 86400);
+            await redis.set(nudgeLock, '1', { EX: 86400 });
             await sendNudge(user);
           }
         }
@@ -121,7 +125,7 @@ async function checkWeeklySummary() {
       const lockKey = `weekly:${user.id}:${today}`;
       const sent = await redis.get(lockKey);
       if (sent) continue;
-      await redis.set(lockKey, '1', 86400);
+      await redis.set(lockKey, '1', { EX: 86400 });
 
       // Get stats for last 7 days (excluding today)
       const end = new Date();

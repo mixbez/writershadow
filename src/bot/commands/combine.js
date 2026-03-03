@@ -81,7 +81,7 @@ export async function handleCombineSelection(ctx, text) {
   const post = await createDraftPost(user.id, postText, selectedIds);
 
   // Store pending post in Redis
-  await redis.set(`pending_post:${user.id}`, post.id.toString(), 86400);
+  await redis.set(`pending_post:${user.id}`, post.id.toString(), { EX: 86400 });
 
   // Show preview
   const preview = postText.substring(0, 500) + (postText.length > 500 ? '...' : '');
