@@ -61,3 +61,14 @@ export async function getDraftCount(userId, since = null) {
   const result = await query(sql, params);
   return parseInt(result.rows[0].count, 10);
 }
+
+export async function getRecentDrafts(userId, limit = 15) {
+  const result = await query(
+    `SELECT * FROM drafts
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+  return result.rows;
+}

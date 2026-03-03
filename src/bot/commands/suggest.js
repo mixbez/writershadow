@@ -1,5 +1,6 @@
 import { getUser, isUserSetup } from '../../db/models/user.js';
 import { getRecentPublishedPosts } from '../../db/models/post.js';
+import { getRecentDrafts } from '../../db/models/draft.js';
 import { generateSuggestion } from '../../ai/provider.js';
 
 export async function suggestCommand(ctx) {
@@ -43,22 +44,25 @@ export async function suggestCommand(ctx) {
   const statusMsg = await ctx.reply('⏳ Анализирую твои тексты...');
 
   try {
-    // Get recent published posts
-    const posts = await getRecentPublishedPosts(user.id, 15);
+    // Get recent published posts, supplement with drafts if not enough
+    let content = await getRecentPublishedPosts(user.id, 15);
+    if (content.length < 15) {
+      const drafts = await getRecentDrafts(user.id, 15 - content.length);
+      content = [...content, ...drafts];
+    }
 
-    // Check minimum
-    if (posts.length < 3) {
+    if (content.length < 3) {
       await ctx.telegram.editMessageText(
         userId,
         statusMsg.message_id,
         undefined,
-        'Пока мало публикаций (нужно минимум 3). Напиши и опубликуй несколько постов.'
+        'Пока мало текстов для анализа (нужно минимум 3). Напиши несколько черновиков в группе.'
       );
       return;
     }
 
     // Generate suggestion
-    const suggestion = await generateSuggestion(posts, user);
+    const suggestion = await generateSuggestion(content, user);
 
     await ctx.telegram.editMessageText(
       userId,
