@@ -14,9 +14,15 @@ export async function startCommand(ctx) {
     return;
   }
 
-  // Initialize setup session
+  // Reset session and initialize setup
   if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'channel';
+  ctx.session.combineStep = null;
+  ctx.session.aiSetupStep = null;
+  ctx.session.settingsStep = null;
+  ctx.session.pendingNewDraft = false;
+  ctx.session.pendingReminderTime = null;
+
   await ctx.reply(
     'Привет! Я WriterShadow — помогаю писать регулярно. Давай настроим.\n\n' +
     '1️⃣ Добавь меня как администратора в канал, где публикуешь посты (нужно право «Публикация сообщений»).\n\n' +
