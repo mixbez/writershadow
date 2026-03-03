@@ -46,6 +46,7 @@ async function checkReminders() {
 
     for (const user of users) {
       const currentSlot = getUserLocalTime(user.timezone);
+      if (!currentSlot) continue; // invalid timezone in DB
       const reminderSlot = user.reminder_time.slice(0, 5);
 
       if (currentSlot === reminderSlot) {
