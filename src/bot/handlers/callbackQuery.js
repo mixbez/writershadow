@@ -13,6 +13,8 @@ export async function handleCallbackQuery(ctx) {
       await handlePublishPost(ctx, data);
     } else if (data.startsWith('cancel_post:')) {
       await handleCancelPost(ctx, data);
+    } else if (data.startsWith('delete_draft:')) {
+      await handleDeleteDraft(ctx, data);
     } else if (data.startsWith('toggle_')) {
       await handleToggleSetting(ctx, data);
     } else if (data.startsWith('setai_')) {
@@ -26,6 +28,12 @@ export async function handleCallbackQuery(ctx) {
     console.error('Callback error:', err);
     await ctx.answerCbQuery('Ошибка при обработке действия');
   }
+}
+
+async function handleDeleteDraft(ctx, data) {
+  const draftId = parseInt(data.split(':')[1], 10);
+  const { handleDeleteDraftCallback } = await import('../commands/delete.js');
+  await handleDeleteDraftCallback(ctx, draftId);
 }
 
 async function handleSettingsCallback(ctx, data) {

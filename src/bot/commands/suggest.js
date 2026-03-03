@@ -68,7 +68,7 @@ export async function suggestCommand(ctx) {
       userId,
       statusMsg.message_id,
       undefined,
-      `💡 Идея для следующего поста:\n\n${suggestion}`
+      `💡 Идея для следующего поста:\n\n${suggestion}\n\n📝 Напиши черновик: /new`
     );
   } catch (err) {
     console.error('Suggestion error:', err);

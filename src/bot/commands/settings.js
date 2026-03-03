@@ -21,7 +21,6 @@ export async function settingsCommand(ctx) {
   const text = `⚙️ Настройки WriterShadow
 
 Канал: ${user.blog_channel_id || 'не настроен'}
-Группа черновиков: ${user.draft_group_id || 'не настроена'}
 
 ── Напоминания ──
 Ежедневное: ${user.reminder_time} ${user.timezone}
@@ -57,7 +56,7 @@ export async function handleSettingsCallback(ctx, action) {
     if (!ctx.session) ctx.session = {};
     ctx.session.setupStep = 'channel';
     await ctx.editMessageText(
-      'Давай переделаем настройку.\n\n' +
+      'Давай переделаем настройку канала для публикаций.\n\n' +
       'Напиши @username канала или перешли любое сообщение из канала, где публикуешь посты.'
     );
   }

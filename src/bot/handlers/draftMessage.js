@@ -30,6 +30,20 @@ async function handleSetupMessage(ctx, text) {
   const combineStep = ctx.session.combineStep;
   const aiSetupStep = ctx.session.aiSetupStep;
   const settingsStep = ctx.session.settingsStep;
+  const pendingNewDraft = ctx.session.pendingNewDraft;
+
+  if (pendingNewDraft) {
+    // User is entering text for /new command
+    const { saveDraftFromNewCommand } = await import('../commands/newDraft.js');
+    try {
+      await saveDraftFromNewCommand(ctx, text);
+    } catch (err) {
+      console.error('New draft error:', err);
+      await ctx.reply('Ошибка при сохранении черновика: ' + err.message);
+    }
+    ctx.session.pendingNewDraft = false;
+    return;
+  }
 
   if (combineStep === 'selecting') {
     // Import here to avoid circular dependency
@@ -81,8 +95,6 @@ async function handleSetupMessage(ctx, text) {
   try {
     if (setupStep === 'channel') {
       await setupChannel(ctx, userId, text);
-    } else if (setupStep === 'group') {
-      await setupGroup(ctx, userId, text);
     } else if (setupStep === 'time') {
       await setupReminderTime(ctx, userId, text);
     } else if (setupStep === 'timezone') {
@@ -131,62 +143,14 @@ async function setupChannel(ctx, userId, text) {
     return;
   }
 
-  // Save channel and move to next step
+  // Save channel and finish setup
   await updateUser(userId, { blog_channel_id: channelId });
-  if (!ctx.session) ctx.session = {};
-  ctx.session.setupStep = 'group';
-  await ctx.reply(
-    '✅ Канал для публикаций настроен.\n\n' +
-    '2️⃣ Теперь создай отдельный канал для черновиков (например, «Мои черновики»), добавь меня туда администратором с правом «Публикация сообщений».\n\n' +
-    'Затем напиши @username этого канала или перешли из него любое сообщение.'
-  );
-}
-
-async function setupGroup(ctx, userId, text) {
-  let groupId = null;
-
-  // Check if forwarded message from channel
-  if (ctx.message.forward_origin && ctx.message.forward_origin.type === 'channel') {
-    groupId = ctx.message.forward_origin.chat.id;
-  } else if (text.startsWith('@')) {
-    // Parse @username
-    groupId = text;
-  } else {
-    await ctx.reply('Пожалуйста, напиши @username канала черновиков или перешли из него любое сообщение.');
-    return;
-  }
-
-  // Resolve @username to numeric ID
-  if (typeof groupId === 'string' && groupId.startsWith('@')) {
-    try {
-      const chat = await ctx.telegram.getChat(groupId);
-      groupId = chat.id;
-    } catch (err) {
-      await ctx.reply('Не могу найти канал. Убедись, что username верный и бот добавлен в канал черновиков.');
-      return;
-    }
-  }
-
-  // Check if bot is admin in draft channel
-  try {
-    const member = await ctx.telegram.getChatMember(groupId, ctx.botInfo.id);
-    if (!member || (member.status !== 'administrator' && member.status !== 'creator')) {
-      await ctx.reply('Добавь меня как администратора в канал черновиков (нужно право «Публикация сообщений»), затем повтори.');
-      return;
-    }
-  } catch (err) {
-    await ctx.reply('Не могу проверить права в канале черновиков. Добавь меня админом и повтори.');
-    return;
-  }
-
-  // Save draft channel and finish setup
-  await updateUser(userId, { draft_group_id: groupId });
   if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = null;
   await ctx.reply(
     '✅ Всё готово! Настройки сохранены.\n\n' +
-    'Пиши черновики в канал черновиков — я буду отслеживать твой прогресс.\n' +
-    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow).\n\n' +
+    'Начни писать черновики через /new или писать в личный чат.\n\n' +
+    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow)\n\n' +
     'Поменять время и другие настройки: /settings\n' +
     'Настроить AI-ассистента: /setai'
   );

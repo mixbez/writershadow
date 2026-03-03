@@ -14,12 +14,22 @@ export async function startCommand(ctx) {
     return;
   }
 
-  // Initialize setup session
+  // Reset session and initialize setup
   if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'channel';
+  ctx.session.combineStep = null;
+  ctx.session.aiSetupStep = null;
+  ctx.session.settingsStep = null;
+  ctx.session.pendingNewDraft = false;
+  ctx.session.pendingReminderTime = null;
+
   await ctx.reply(
     'Привет! Я WriterShadow — помогаю писать регулярно. Давай настроим.\n\n' +
     '1️⃣ Добавь меня как администратора в канал, где публикуешь посты (нужно право «Публикация сообщений»).\n\n' +
-    'Затем напиши @username этого канала или перешли из него любое сообщение.'
+    'Затем напиши @username этого канала или перешли из него любое сообщение.\n\n' +
+    'По умолчанию:\n' +
+    '• Ежедневное напоминание: 09:00 (Europe/Moscow)\n' +
+    '• Вечерний пинок: включен\n' +
+    '• Еженедельная сводка: включена'
   );
 }
