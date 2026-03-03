@@ -12,6 +12,7 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 
 await runMigrations();
 startScheduler();
+await setupAnalyticsRoutes(server);
 
 // Register static file serving for public directory
 server.register(fastifyStatic, {
@@ -53,8 +54,10 @@ if (process.env.NODE_ENV === 'production') {
   console.log('Webhook set:', process.env.BOT_WEBHOOK_URL);
   console.log('Analytics available at: http://localhost:3001/analytics.html');
 } else {
+  await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
   await bot.launch();
   console.log('Bot started in polling mode');
+  console.log('Analytics available at http://localhost:3001/analytics');
 }
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
