@@ -125,6 +125,29 @@ CREATE TABLE daily_stats (
 );
 ```
 
+## 🔧 Конфигурация Caddy
+
+### Для маршрутизации через Caddy proxy (рекомендуется)
+
+Добавьте в ваш `Caddyfile` эти строки для маршрутизации аналитики WriterShadow:
+
+```caddyfile
+v2202504269079335176.supersrv.de {
+  # WriterShadow Analytics
+  reverse_proxy /analytics.html backend-writershadow:3001
+  reverse_proxy /api/analytics* backend-writershadow:3001
+
+  # Остальные маршруты WriterShadow
+  reverse_proxy /ws-webhook backend-writershadow:3001
+
+  # Другие маршруты...
+}
+```
+
+### Порядок добавления маршрутов важен!
+- Более специфичные маршруты должны быть выше
+- `/analytics.html` должно быть перед общими маршрутами
+
 ## 🔐 Безопасность
 
 ### Текущая конфигурация
@@ -137,10 +160,26 @@ CREATE TABLE daily_stats (
 ### Рекомендации для боевого сервера
 
 **Вариант 1: Basic Auth через Caddy**
-```
-reverse_proxy /analytics* localhost:3001 {
-  header_up Authorization "Basic dXNlcm5hbWU6cGFzc3dvcmQ="
+```caddyfile
+v2202504269079335176.supersrv.de {
+  # Защита аналитики паролем
+  @analytics {
+    path /analytics.html
+    path /api/analytics*
+  }
+
+  basicauth @analytics {
+    admin $2a$14$abcdefghijklmnopqrstuvwxyz123456789
+  }
+
+  reverse_proxy /analytics.html backend-writershadow:3001
+  reverse_proxy /api/analytics* backend-writershadow:3001
 }
+```
+
+Для генерации хеша пароля используйте:
+```bash
+caddy hash-password "ваш-пароль"
 ```
 
 **Вариант 2: Firewall**
