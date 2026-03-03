@@ -49,6 +49,7 @@ async function checkReminders() {
       AND blog_channel_id IS NOT NULL AND draft_group_id IS NOT NULL
     `);
 
+    console.log(`[Reminder] Found ${users.length} user(s) with reminders enabled`);
     if (users.length === 0) return;
 
     const today = new Date().toISOString().slice(0, 10);
@@ -56,11 +57,12 @@ async function checkReminders() {
     for (const user of users) {
       const currentSlot = getUserLocalTime(user.timezone);
       if (!currentSlot) {
-        console.warn(`Reminder: invalid timezone "${user.timezone}" for user ${user.id}`);
+        console.warn(`[Reminder] Invalid timezone "${user.timezone}" for user ${user.id}`);
         continue;
       }
 
       const reminderSlot = roundToFiveMinutes(user.reminder_time);
+      console.log(`[Reminder] user ${user.id}: currentSlot=${currentSlot} reminderSlot=${reminderSlot} tz=${user.timezone}`);
 
       if (currentSlot === reminderSlot) {
         const lockKey = `reminder:${user.id}:${today}`;

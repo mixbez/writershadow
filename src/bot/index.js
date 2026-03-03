@@ -10,8 +10,10 @@ import { combineCommand } from './commands/combine.js';
 import { postCommand } from './commands/post.js';
 import { suggestCommand } from './commands/suggest.js';
 import { adminCommand } from './commands/admin.js';
+import { newDraftCommand } from './commands/newDraft.js';
 import { handleDraftMessage } from './handlers/draftMessage.js';
 import { handleCallbackQuery } from './handlers/callbackQuery.js';
+import { handleChannelDraftPost } from './handlers/channelDraft.js';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -28,6 +30,9 @@ bot.command('combine', combineCommand);
 bot.command('post', postCommand);
 bot.command('suggest', suggestCommand);
 bot.command('admin', adminCommand);
+bot.command('new', newDraftCommand);
 
 bot.on('message', handleDraftMessage);
+// channel_post is a separate update type for messages in channels where the bot is admin
+bot.on('channel_post', handleChannelDraftPost);
 bot.on('callback_query', handleCallbackQuery);
