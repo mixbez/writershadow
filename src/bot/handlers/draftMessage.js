@@ -249,7 +249,7 @@ async function handleDraftInGroup(ctx, text) {
   const lockKey = `first_draft_today:${user.id}:${today2}`;
   const sent = await redis.get(lockKey);
   if (!sent) {
-    await redis.set(lockKey, '1', { EX: 86400 });
+    await redis.set(lockKey, '1', 86400);
     try {
       await ctx.react('✍️');
     } catch (err) {

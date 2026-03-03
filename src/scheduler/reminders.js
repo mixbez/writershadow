@@ -53,7 +53,7 @@ async function checkReminders() {
         const lockKey = `reminder:${user.id}:${today}`;
         const sent = await redis.get(lockKey);
         if (sent) continue;
-        await redis.set(lockKey, '1', { EX: 86400 });
+        await redis.set(lockKey, '1', 86400);
         await sendDailyReminder(user);
       }
 
@@ -66,7 +66,7 @@ async function checkReminders() {
           if (nudgeSent) continue;
           const stats = await getTodayStats(user.id);
           if (!stats || stats.chars_written === 0) {
-            await redis.set(nudgeLock, '1', { EX: 86400 });
+            await redis.set(nudgeLock, '1', 86400);
             await sendNudge(user);
           }
         }
@@ -126,7 +126,7 @@ async function checkWeeklySummary() {
       const lockKey = `weekly:${user.id}:${today}`;
       const sent = await redis.get(lockKey);
       if (sent) continue;
-      await redis.set(lockKey, '1', { EX: 86400 });
+      await redis.set(lockKey, '1', 86400);
 
       // Get stats for last 7 days (excluding today)
       const end = new Date();
