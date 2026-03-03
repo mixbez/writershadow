@@ -7,7 +7,24 @@
 ### 1. Дашборд
 После запуска приложения дашборд доступен по адресу:
 - **Локально**: `http://localhost:3001/analytics`
-- **Продакшене**: `https://your-domain.com/analytics`
+- **По IP**: `http://your-vps-ip:3001/analytics`
+- **По домену**: `https://your-domain.com/analytics`
+
+### Аутентификация (Опционально)
+
+По умолчанию дашборд открыт для всех. Если хочешь добавить пароль:
+
+```bash
+export ANALYTICS_KEY="your-secret-key-here"
+npm run dev
+```
+
+Затем открывай дашборд с ключом в URL:
+```
+http://your-vps-ip:3001/analytics?key=your-secret-key-here
+```
+
+Или введи ключ в форме на странице дашборда (если он закрыт)
 
 ### 2. API эндпоинты
 

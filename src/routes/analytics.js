@@ -5,9 +5,20 @@ import {
   getDashboardStats
 } from '../db/models/commandLog.js';
 
+const ANALYTICS_KEY = process.env.ANALYTICS_KEY || null;
+
+function isAnalyticsAccessAllowed(key) {
+  if (!ANALYTICS_KEY) return true; // Если ключ не установлен, разрешить всем
+  return key === ANALYTICS_KEY;
+}
+
 export async function setupAnalyticsRoutes(server) {
   // Получить статистику по команде
   server.get('/api/analytics/stats', async (req, reply) => {
+    const { key } = req.query;
+    if (!isAnalyticsAccessAllowed(key)) {
+      return reply.code(403).send({ error: 'Invalid access key' });
+    }
     const stats = await getDashboardStats();
     const commandStats = await getCommandStats();
     return { stats, commandStats };
@@ -15,7 +26,10 @@ export async function setupAnalyticsRoutes(server) {
 
   // Получить логи команд с фильтрами
   server.get('/api/analytics/logs', async (req, reply) => {
-    const { telegramUserId, command, status, fromDate, toDate } = req.query;
+    const { telegramUserId, command, status, fromDate, toDate, key } = req.query;
+    if (!isAnalyticsAccessAllowed(key)) {
+      return reply.code(403).send({ error: 'Invalid access key' });
+    }
     const logs = await getCommandLogs({
       telegramUserId: telegramUserId ? BigInt(telegramUserId) : null,
       command,
@@ -29,18 +43,180 @@ export async function setupAnalyticsRoutes(server) {
   // Получить статистику по пользователю
   server.get('/api/analytics/user/:telegramUserId', async (req, reply) => {
     const { telegramUserId } = req.params;
+    const { key } = req.query;
+    if (!isAnalyticsAccessAllowed(key)) {
+      return reply.code(403).send({ error: 'Invalid access key' });
+    }
     const stats = await getCommandStatsByUser(BigInt(telegramUserId));
     return { stats };
   });
 
   // HTML страница дашборда
   server.get('/analytics', async (req, reply) => {
+    const { key } = req.query;
+
+    // Если ключ требуется, но не предоставлен - показать форму
+    if (ANALYTICS_KEY && !isAnalyticsAccessAllowed(key)) {
+      reply.type('text/html');
+      return getAuthPage();
+    }
+
     reply.type('text/html');
-    return getAnalyticsDashboard();
+    return getAnalyticsDashboard(key);
   });
 }
 
-function getAnalyticsDashboard() {
+function getAuthPage() {
+  return `
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Access</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            color: #888;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .auth-button {
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 14px;
+        }
+
+        .auth-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .auth-button:active {
+            transform: translateY(0);
+        }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 13px;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-card">
+        <h1 class="auth-title">🔐 Analytics</h1>
+        <p class="auth-subtitle">Enter access key to continue</p>
+
+        <div class="error-message" id="errorMsg">Invalid key</div>
+
+        <form class="auth-form" onsubmit="handleSubmit(event)">
+            <div class="form-group">
+                <label for="key">Access Key</label>
+                <input type="password" id="key" name="key" placeholder="Enter your access key" autofocus required>
+            </div>
+            <button type="submit" class="auth-button">Access Dashboard</button>
+        </form>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('error')) {
+            document.getElementById('errorMsg').classList.add('show');
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            const key = document.getElementById('key').value;
+            if (key) {
+                window.location.href = '/analytics?key=' + encodeURIComponent(key);
+            }
+        }
+    </script>
+</body>
+</html>
+  `;
+}
+
+function getAnalyticsDashboard(key = '') {
   return `
 <!DOCTYPE html>
 <html lang="ru">
@@ -305,10 +481,17 @@ function getAnalyticsDashboard() {
 
     <script>
         let commandsChart, statusChart;
+        const params = new URLSearchParams(window.location.search);
+        const accessKey = params.get('key') || '';
+
+        function getApiUrl(endpoint) {
+            const separator = endpoint.includes('?') ? '&' : '?';
+            return endpoint + (accessKey ? separator + 'key=' + encodeURIComponent(accessKey) : '');
+        }
 
         async function loadStats() {
             try {
-                const response = await fetch('/api/analytics/stats');
+                const response = await fetch(getApiUrl('/api/analytics/stats'));
                 const data = await response.json();
                 renderStats(data.stats, data.commandStats);
             } catch (error) {
@@ -408,6 +591,7 @@ function getAnalyticsDashboard() {
             if (command) url += \`command=\${command}&\`;
             if (status) url += \`status=\${status}&\`;
             if (userId) url += \`telegramUserId=\${userId}&\`;
+            if (accessKey) url += \`key=\${encodeURIComponent(accessKey)}&\`;
 
             try {
                 const response = await fetch(url);
