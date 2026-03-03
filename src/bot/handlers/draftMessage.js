@@ -5,6 +5,12 @@ import { redis } from '../../redis/client.js';
 
 // This handler is used in both private chat (for setup) and draft group (for tracking)
 export async function handleDraftMessage(ctx) {
+  // Handle document uploads in private chat (JSON export import)
+  if (ctx.chat.type === 'private' && ctx.message.document) {
+    const { handleJsonImport } = await import('./importHandler.js');
+    return handleJsonImport(ctx);
+  }
+
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return;
 

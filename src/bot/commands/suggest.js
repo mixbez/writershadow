@@ -1,6 +1,5 @@
 import { getUser, isUserSetup } from '../../db/models/user.js';
 import { getRecentPublishedPosts } from '../../db/models/post.js';
-import { getRecentDrafts } from '../../db/models/draft.js';
 import { generateSuggestion } from '../../ai/provider.js';
 
 export async function suggestCommand(ctx) {
@@ -44,25 +43,26 @@ export async function suggestCommand(ctx) {
   const statusMsg = await ctx.reply('⏳ Анализирую твои тексты...');
 
   try {
-    // Get recent published posts, supplement with drafts if not enough
-    let content = await getRecentPublishedPosts(user.id, 15);
-    if (content.length < 15) {
-      const drafts = await getRecentDrafts(user.id, 15 - content.length);
-      content = [...content, ...drafts];
-    }
+    const posts = await getRecentPublishedPosts(user.id, 15);
 
-    if (content.length < 3) {
+    if (posts.length < 3) {
       await ctx.telegram.editMessageText(
         userId,
         statusMsg.message_id,
         undefined,
-        'Пока мало текстов для анализа (нужно минимум 3). Напиши несколько черновиков в группе.'
+        'Мало постов для анализа (нужно минимум 3).\n\n' +
+        'Из-за технических ограничений мне недоступна история канала напрямую, но ты можешь экспортировать её сам:\n\n' +
+        '1. Открой свой канал в Telegram Desktop\n' +
+        '2. Меню → Экспорт истории чата\n' +
+        '3. Формат: JSON, снять галочки с медиафайлов\n' +
+        '4. Отправь мне файл result.json в этот чат\n\n' +
+        'После этого /suggest будет работать.'
       );
       return;
     }
 
     // Generate suggestion
-    const suggestion = await generateSuggestion(content, user);
+    const suggestion = await generateSuggestion(posts, user);
 
     await ctx.telegram.editMessageText(
       userId,

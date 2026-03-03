@@ -44,12 +44,29 @@ export async function getLatestDraftPost(userId) {
 export async function getRecentPublishedPosts(userId, limit = 15) {
   const result = await query(
     `SELECT * FROM posts
-     WHERE user_id = $1 AND status = 'published'
-     ORDER BY published_at DESC
+     WHERE user_id = $1 AND status IN ('published', 'imported')
+     ORDER BY COALESCE(published_at, created_at) DESC
      LIMIT $2`,
     [userId, limit]
   );
   return result.rows;
+}
+
+export async function importPostsForUser(userId, texts) {
+  if (texts.length === 0) return 0;
+  // Delete previous imported posts to avoid accumulation
+  await query(
+    `DELETE FROM posts WHERE user_id = $1 AND status = 'imported'`,
+    [userId]
+  );
+  for (const text of texts) {
+    await query(
+      `INSERT INTO posts (user_id, text, char_count, status, published_at)
+       VALUES ($1, $2, $3, 'imported', NOW())`,
+      [userId, text, text.length]
+    );
+  }
+  return texts.length;
 }
 
 export async function getPostsByUserId(userId, status = null) {
