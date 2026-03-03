@@ -1,405 +1,642 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WriterShadow Analytics</title>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WriterShadow Analytics</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      padding: 20px;
-    }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
-    h1 {
-      color: white;
-      margin-bottom: 30px;
-      text-align: center;
-      font-size: 2.5em;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-    }
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    .controls {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin-bottom: 20px;
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-      align-items: center;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
+        h1 {
+            font-size: 28px;
+            color: #667eea;
+        }
 
-    .controls input {
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 5px;
-      font-size: 14px;
-    }
+        .date-filter {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
 
-    .controls button {
-      padding: 10px 20px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      transition: background 0.3s;
-    }
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
 
-    .controls button:hover {
-      background: #764ba2;
-    }
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-bottom: 30px;
-    }
+        .filter-btn:hover {
+            border-color: #667eea;
+        }
 
-    .stat-card {
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      transition: transform 0.3s;
-    }
+        input[type="date"] {
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
 
-    .stat-card:hover {
-      transform: translateY(-5px);
-    }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-    .stat-label {
-      color: #666;
-      font-size: 14px;
-      font-weight: 600;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-      letter-spacing: 0.5px;
-    }
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+        }
 
-    .stat-value {
-      font-size: 2.5em;
-      font-weight: bold;
-      color: #667eea;
-      line-height: 1;
-    }
+        .stat-card.warning {
+            border-left-color: #f59e0b;
+        }
 
-    .stat-subtitle {
-      font-size: 12px;
-      color: #999;
-      margin-top: 8px;
-    }
+        .stat-card.success {
+            border-left-color: #10b981;
+        }
 
-    .table-section {
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      margin-bottom: 30px;
-      overflow-x: auto;
-    }
+        .stat-label {
+            font-size: 13px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
 
-    .table-section h2 {
-      color: #333;
-      margin-bottom: 20px;
-      font-size: 1.5em;
-    }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
+        .stat-card.warning .stat-value {
+            color: #f59e0b;
+        }
 
-    th {
-      background: #f5f5f5;
-      padding: 15px;
-      text-align: left;
-      font-weight: 600;
-      color: #333;
-      border-bottom: 2px solid #ddd;
-      font-size: 14px;
-    }
+        .stat-card.success .stat-value {
+            color: #10b981;
+        }
 
-    td {
-      padding: 15px;
-      border-bottom: 1px solid #eee;
-      color: #666;
-      font-size: 14px;
-    }
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
 
-    tr:hover {
-      background: #f9f9f9;
-    }
+        .section h2 {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 15px;
+        }
 
-    .status-badge {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
 
-    .status-active {
-      background: #d4edda;
-      color: #155724;
-    }
+        th {
+            background: #f9f9f9;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 2px solid #e0e0e0;
+        }
 
-    .status-inactive {
-      background: #f8d7da;
-      color: #721c24;
-    }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
 
-    .loading {
-      text-align: center;
-      color: white;
-      font-size: 18px;
-    }
+        tr:hover {
+            background: #f9f9f9;
+        }
 
-    .error {
-      background: #f8d7da;
-      color: #721c24;
-      padding: 15px;
-      border-radius: 5px;
-      margin-bottom: 20px;
-    }
+        .command-name {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: 500;
+        }
 
-    .empty-state {
-      text-align: center;
-      padding: 40px;
-      color: #999;
-    }
+        .status-success {
+            color: #10b981;
+        }
 
-    .chart-container {
-      background: white;
-      padding: 25px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      margin-bottom: 30px;
-    }
+        .status-error {
+            color: #ef4444;
+        }
 
-    .chart-container h2 {
-      color: #333;
-      margin-bottom: 20px;
-      font-size: 1.5em;
-    }
+        .chart-container {
+            margin: 20px 0;
+            padding: 20px 0;
+        }
 
-    @media (max-width: 768px) {
-      h1 {
-        font-size: 1.8em;
-      }
+        svg {
+            width: 100%;
+            height: auto;
+        }
 
-      .controls {
-        flex-direction: column;
-      }
+        .chart-axis {
+            font-size: 12px;
+            fill: #999;
+        }
 
-      .controls input,
-      .controls button {
-        width: 100%;
-      }
+        .chart-bar {
+            fill: #667eea;
+            transition: fill 0.3s;
+        }
 
-      .stats-grid {
-        grid-template-columns: 1fr;
-      }
+        .chart-bar:hover {
+            fill: #764ba2;
+        }
 
-      table {
-        font-size: 12px;
-      }
+        .activity-feed {
+            max-height: 400px;
+            overflow-y: auto;
+        }
 
-      th, td {
-        padding: 10px 5px;
-      }
-    }
-  </style>
+        .feed-item {
+            padding: 12px;
+            border-left: 3px solid #e0e0e0;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background: #f9f9f9;
+            font-size: 13px;
+        }
+
+        .feed-item.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .feed-item.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .feed-time {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .feed-command {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ef4444;
+        }
+
+        .funnel-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .funnel-bar {
+            height: 40px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            color: white;
+            font-weight: 500;
+            min-width: 200px;
+        }
+
+        .funnel-label {
+            min-width: 150px;
+        }
+
+        .funnel-percent {
+            font-size: 12px;
+            color: #999;
+            margin-left: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 20px;
+                align-items: flex-start;
+            }
+
+            .date-filter {
+                flex-wrap: wrap;
+            }
+        }
+
+        .refresh-info {
+            color: #999;
+            font-size: 12px;
+            text-align: right;
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>📊 WriterShadow Analytics</h1>
+    <div class="container">
+        <header>
+            <div>
+                <h1>📊 WriterShadow Analytics</h1>
+            </div>
+            <div class="date-filter">
+                <button class="filter-btn active" data-range="today">Сегодня</button>
+                <button class="filter-btn" data-range="week">Неделя</button>
+                <button class="filter-btn" data-range="month">Месяц</button>
+                <input type="date" id="dateFrom" />
+                <span>—</span>
+                <input type="date" id="dateTo" />
+                <button class="filter-btn" id="applyBtn">Применить</button>
+            </div>
+        </header>
 
-    <div class="controls">
-      <label>
-        От:
-        <input type="date" id="dateFrom">
-      </label>
-      <label>
-        До:
-        <input type="date" id="dateTo">
-      </label>
-      <button onclick="loadAnalytics()">Обновить</button>
-      <button onclick="loadToday()">Сегодня</button>
-      <button onclick="loadLastWeek()">Последняя неделя</button>
-      <button onclick="loadLastMonth()">Последний месяц</button>
+        <div id="errorContainer"></div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="section">
+            <h2>📈 Активность по дням</h2>
+            <div id="timelineChart" class="chart-container loading">Загрузка...</div>
+        </div>
+
+        <div class="section">
+            <h2>⚡ Самые частые команды</h2>
+            <table id="commandsTable">
+                <thead>
+                    <tr>
+                        <th>Команда</th>
+                        <th>Вызовов</th>
+                        <th>Уник. пользователей</th>
+                        <th>Ошибок</th>
+                        <th>% Ошибок</th>
+                        <th>Последний вызов</th>
+                    </tr>
+                </thead>
+                <tbody id="commandsBody">
+                    <tr><td colspan="6" class="loading">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Воронка конверсии</h2>
+            <div id="funnelChart" class="loading">Загрузка...</div>
+        </div>
+
+        <div class="section">
+            <h2>👥 Топ пользователей</h2>
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Пользователь</th>
+                        <th>Команд всего</th>
+                        <th>Уник. команд</th>
+                        <th>Активных дней</th>
+                        <th>Последняя активность</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    <tr><td colspan="5" class="loading">Загрузка...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>📋 Последние события</h2>
+            <div id="feedContainer" class="activity-feed loading">Загрузка...</div>
+            <div class="refresh-info">Обновляется каждые 30 секунд</div>
+        </div>
     </div>
 
-    <div id="error" class="error" style="display: none;"></div>
+    <script>
+        const API_BASE = '/api/analytics';
+        let currentDateFrom = null;
+        let currentDateTo = null;
+        let refreshInterval = null;
 
-    <div id="loading" class="loading" style="display: none;">
-      Загрузка данных...
-    </div>
-
-    <div id="content" style="display: none;">
-      <div class="stats-grid" id="statsGrid"></div>
-      <div class="table-section">
-        <h2>Статистика по пользователям</h2>
-        <table id="usersTable">
-          <thead>
-            <tr>
-              <th>Username</th>
-              <th>Всего знаков</th>
-              <th>Черновиков</th>
-              <th>Постов</th>
-              <th>Активных дней</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody">
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    // Set date inputs to today and 30 days ago
-    function initDates() {
-      const today = new Date();
-      const thirtyDaysAgo = new Date(today);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      document.getElementById('dateTo').valueAsDate = today;
-      document.getElementById('dateFrom').valueAsDate = thirtyDaysAgo;
-    }
-
-    function showLoading(show = true) {
-      document.getElementById('loading').style.display = show ? 'block' : 'none';
-      document.getElementById('content').style.display = show ? 'none' : 'block';
-      document.getElementById('error').style.display = 'none';
-    }
-
-    function showError(message) {
-      document.getElementById('error').textContent = '❌ ' + message;
-      document.getElementById('error').style.display = 'block';
-      document.getElementById('content').style.display = 'none';
-      document.getElementById('loading').style.display = 'none';
-    }
-
-    async function loadAnalytics() {
-      showLoading(true);
-      try {
-        const dateFrom = document.getElementById('dateFrom').value;
-        const dateTo = document.getElementById('dateTo').value;
-
-        if (!dateFrom || !dateTo) {
-          showError('Выберите диапазон дат');
-          return;
+        // Date utilities
+        function getToday() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
         }
 
-        const response = await fetch(`/api/analytics?from=${dateFrom}&to=${dateTo}`);
-        if (!response.ok) {
-          throw new Error('Ошибка сервера');
+        function getDateRange(range) {
+            const today = new Date();
+            const from = new Date();
+
+            switch (range) {
+                case 'today':
+                    from.setDate(today.getDate());
+                    break;
+                case 'week':
+                    from.setDate(today.getDate() - 7);
+                    break;
+                case 'month':
+                    from.setMonth(today.getMonth() - 1);
+                    break;
+            }
+
+            return [from.toISOString().split('T')[0], today.toISOString().split('T')[0]];
         }
 
-        const data = await response.json();
-        renderAnalytics(data);
-        showLoading(false);
-      } catch (error) {
-        showError(error.message);
-      }
-    }
+        // Date filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            if (btn.id !== 'applyBtn') {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    const [from, to] = getDateRange(e.target.dataset.range);
+                    currentDateFrom = from;
+                    currentDateTo = to;
+                    document.getElementById('dateFrom').value = from;
+                    document.getElementById('dateTo').value = to;
+                    loadData();
+                });
+            }
+        });
 
-    function renderAnalytics(data) {
-      const { global, users } = data;
+        document.getElementById('applyBtn').addEventListener('click', () => {
+            const from = document.getElementById('dateFrom').value;
+            const to = document.getElementById('dateTo').value;
+            if (from && to) {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                currentDateFrom = from;
+                currentDateTo = to;
+                loadData();
+            }
+        });
 
-      // Render global stats
-      const statsHtml = `
-        <div class="stat-card">
-          <div class="stat-label">Всего знаков</div>
-          <div class="stat-value">${(global.total_chars || 0).toLocaleString()}</div>
-          <div class="stat-subtitle">за выбранный период</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Черновиков</div>
-          <div class="stat-value">${(global.total_drafts || 0).toLocaleString()}</div>
-          <div class="stat-subtitle">за выбранный период</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Постов опубликовано</div>
-          <div class="stat-value">${(global.total_posts || 0).toLocaleString()}</div>
-          <div class="stat-subtitle">за выбранный период</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Активных пользователей</div>
-          <div class="stat-value">${global.active_users || 0}</div>
-          <div class="stat-subtitle">с активностью</div>
-        </div>
-      `;
-      document.getElementById('statsGrid').innerHTML = statsHtml;
+        // Initialize dates
+        [currentDateFrom, currentDateTo] = getDateRange('today');
+        document.getElementById('dateFrom').value = currentDateFrom;
+        document.getElementById('dateTo').value = currentDateTo;
 
-      // Render users table
-      let tableHtml = '';
-      if (users && users.length > 0) {
-        tableHtml = users
-          .map(user => `
-            <tr>
-              <td>${user.username || `User #${user.telegram_user_id}`}</td>
-              <td>${(user.total_chars || 0).toLocaleString()}</td>
-              <td>${user.total_drafts || 0}</td>
-              <td>${user.total_posts || 0}</td>
-              <td>${user.active_days || 0}</td>
-            </tr>
-          `)
-          .join('');
-      } else {
-        tableHtml = '<tr><td colspan="5" class="empty-state">Нет данных за выбранный период</td></tr>';
-      }
-      document.getElementById('tableBody').innerHTML = tableHtml;
-    }
+        // Fetch data
+        async function fetchAnalytics(endpoint, params = {}) {
+            try {
+                const query = new URLSearchParams({
+                    from: currentDateFrom,
+                    to: currentDateTo,
+                    ...params
+                });
+                const response = await fetch(`${API_BASE}${endpoint}?${query}`);
+                if (!response.ok) throw new Error('Failed to fetch');
+                return await response.json();
+            } catch (error) {
+                showError(error.message);
+                return null;
+            }
+        }
 
-    function loadToday() {
-      const today = new Date();
-      document.getElementById('dateFrom').valueAsDate = today;
-      document.getElementById('dateTo').valueAsDate = today;
-      loadAnalytics();
-    }
+        function showError(message) {
+            const container = document.getElementById('errorContainer');
+            container.innerHTML = `<div class="error-message">❌ Ошибка: ${message}</div>`;
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
+        }
 
-    function loadLastWeek() {
-      const today = new Date();
-      const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      document.getElementById('dateFrom').valueAsDate = sevenDaysAgo;
-      document.getElementById('dateTo').valueAsDate = today;
-      loadAnalytics();
-    }
+        // Load all data
+        async function loadData() {
+            await Promise.all([
+                loadStats(),
+                loadTimeline(),
+                loadCommands(),
+                loadFunnel(),
+                loadTopUsers(),
+                loadRecentLogs()
+            ]);
+        }
 
-    function loadLastMonth() {
-      const today = new Date();
-      const thirtyDaysAgo = new Date(today);
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      document.getElementById('dateFrom').valueAsDate = thirtyDaysAgo;
-      document.getElementById('dateTo').valueAsDate = today;
-      loadAnalytics();
-    }
+        async function loadStats() {
+            const data = await fetchAnalytics('');
+            if (!data) return;
 
-    // Initialize on page load
-    window.addEventListener('load', () => {
-      initDates();
-      loadAnalytics();
-    });
-  </script>
+            const { global } = data;
+            const commandsData = await fetchAnalytics('/commands');
+            const todayCommands = commandsData?.commands?.reduce((sum, c) => sum + c.total_calls, 0) || 0;
+
+            const stats = [
+                { label: 'Активных пользователей', value: global.active_users, color: '' },
+                { label: 'Команд выполнено', value: todayCommands, color: '' },
+                { label: 'Черновиков написано', value: global.total_drafts, color: 'success' },
+                { label: 'Постов опубликовано', value: global.total_posts, color: 'success' }
+            ];
+
+            const html = stats.map(s => `
+                <div class="stat-card ${s.color}">
+                    <div class="stat-label">${s.label}</div>
+                    <div class="stat-value">${s.value}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('statsGrid').innerHTML = html;
+        }
+
+        async function loadTimeline() {
+            const data = await fetchAnalytics('/timeline');
+            if (!data?.timeline) return;
+
+            const timeline = data.timeline;
+            if (timeline.length === 0) {
+                document.getElementById('timelineChart').innerHTML = '<p style="text-align: center; color: #999;">Нет данных</p>';
+                return;
+            }
+
+            const maxValue = Math.max(...timeline.map(d => d.active_users), 1);
+            const width = 800;
+            const height = 300;
+            const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+            const chartWidth = width - padding.left - padding.right;
+            const chartHeight = height - padding.top - padding.bottom;
+            const barWidth = chartWidth / timeline.length;
+
+            let svg = `<svg width="${width}" height="${height}" style="border: 1px solid #e0e0e0; border-radius: 6px;">`;
+
+            // Y axis
+            svg += `<line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="#ddd" stroke-width="1"/>`;
+            svg += `<line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="#ddd" stroke-width="1"/>`;
+
+            // Y axis labels
+            for (let i = 0; i <= 5; i++) {
+                const value = Math.round((maxValue / 5) * i);
+                const y = height - padding.bottom - (chartHeight / 5) * i;
+                svg += `<text x="${padding.left - 40}" y="${y + 5}" class="chart-axis" text-anchor="end">${value}</text>`;
+            }
+
+            // Bars
+            timeline.forEach((point, i) => {
+                const barHeight = (point.active_users / maxValue) * chartHeight;
+                const x = padding.left + i * barWidth + barWidth * 0.1;
+                const y = height - padding.bottom - barHeight;
+                svg += `<rect x="${x}" y="${y}" width="${barWidth * 0.8}" height="${barHeight}" class="chart-bar" title="${point.date}: ${point.active_users} пользователей"/>`;
+
+                // X axis labels (every 3rd)
+                if (i % Math.max(1, Math.floor(timeline.length / 7)) === 0) {
+                    svg += `<text x="${x + barWidth * 0.4}" y="${height - padding.bottom + 20}" class="chart-axis" text-anchor="middle">${point.date.substr(5)}</text>`;
+                }
+            });
+
+            svg += '</svg>';
+            document.getElementById('timelineChart').innerHTML = svg;
+        }
+
+        async function loadCommands() {
+            const data = await fetchAnalytics('/commands');
+            if (!data?.commands) return;
+
+            const commands = data.commands.slice(0, 15);
+            const html = commands.map(cmd => `
+                <tr>
+                    <td><span class="command-name">/${cmd.command}</span></td>
+                    <td>${cmd.total_calls}</td>
+                    <td>${cmd.unique_users}</td>
+                    <td><span class="${cmd.error_count > 0 ? 'status-error' : 'status-success'}">${cmd.error_count}</span></td>
+                    <td>${cmd.error_rate}%</td>
+                    <td>${new Date(cmd.last_called).toLocaleString('ru-RU').substr(0, 16)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('commandsBody').innerHTML = html || '<tr><td colspan="6" style="text-align: center;">Нет данных</td></tr>';
+        }
+
+        async function loadFunnel() {
+            const data = await fetchAnalytics('/funnel');
+            if (!data) return;
+
+            const total = data.registered || 1;
+            const stages = [
+                { name: 'Зарегистрировались', value: data.registered },
+                { name: 'Написали черновик', value: data.wrote_draft },
+                { name: 'Скомбинировали', value: data.combined },
+                { name: 'Опубликовали', value: data.published }
+            ];
+
+            const html = stages.map((stage, i) => {
+                const percent = total ? Math.round((stage.value / total) * 100) : 0;
+                const width = Math.max(20, percent);
+                return `
+                    <div class="funnel-item">
+                        <div class="funnel-label">${stage.name}</div>
+                        <div class="funnel-bar" style="width: ${width}%;">
+                            <span>${stage.value}</span>
+                            <span>${percent}%</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('funnelChart').innerHTML = html;
+        }
+
+        async function loadTopUsers() {
+            const data = await fetchAnalytics('/top-users', { limit: 20 });
+            if (!data?.users) return;
+
+            const html = data.users.map(user => `
+                <tr>
+                    <td>${user.username ? '@' + user.username : user.telegram_user_id}</td>
+                    <td>${user.total_commands}</td>
+                    <td>${user.unique_commands}</td>
+                    <td>${user.active_days}</td>
+                    <td>${new Date(user.last_active).toLocaleString('ru-RU').substr(0, 16)}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('usersBody').innerHTML = html || '<tr><td colspan="5" style="text-align: center;">Нет данных</td></tr>';
+        }
+
+        async function loadRecentLogs() {
+            const data = await fetchAnalytics('/recent', { limit: 50 });
+            if (!data?.recent) return;
+
+            const feed = data.recent.reverse();
+            const html = feed.map(log => {
+                const time = new Date(log.created_at).toLocaleTimeString('ru-RU');
+                const statusClass = log.status === 'success' ? 'success' : 'error';
+                const username = log.username ? `@${log.username}` : log.telegram_user_id;
+                return `
+                    <div class="feed-item ${statusClass}">
+                        <span class="feed-time">${time}</span> —
+                        <strong>${username}</strong> вызвал
+                        <span class="feed-command">/${log.command}</span>
+                        ${log.status === 'error' ? ` <em>${log.error_message}</em>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('feedContainer').innerHTML = html || '<p style="text-align: center; color: #999;">Нет данных</p>';
+        }
+
+        // Load data on startup
+        loadData();
+
+        // Refresh every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
 </body>
 </html>
