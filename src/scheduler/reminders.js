@@ -70,8 +70,11 @@ async function checkReminders() {
         const lockKey = `reminder:${user.id}:${today}`;
         const sent = await redis.get(lockKey);
         if (!sent) {
+          console.log(`[Reminder] Lock acquired for user ${user.id}, calling sendDailyReminder`);
           await redis.set(lockKey, '1', 86400);
           await sendDailyReminder(user);
+        } else {
+          console.log(`[Reminder] Already sent for user ${user.id} today (lock exists)`);
         }
       }
 
@@ -97,37 +100,44 @@ async function checkReminders() {
 }
 
 async function sendDailyReminder(user) {
-  const stats = await getTodayStats(user.id);
-  let text = '✍️ Время писать!\n\n';
-  if (stats?.chars_written > 0) {
-    text += `Уже написано сегодня: ${stats.chars_written} зн. · ${stats.drafts_count} черновика`;
-  } else {
-    text += 'Сегодня ещё ничего не написано. Начни с одного предложения.';
-  }
-
-  // Add AI suggestion or prompt to set up AI
-  if (user.ai_provider !== 'none') {
-    // User has AI configured
-    try {
-      const posts = await getRecentPublishedPosts(user.id, 15);
-      if (posts.length >= 3) {
-        const suggestion = await generateSuggestion(posts, user);
-        text += `\n\n💡 Идея для поста:\n${suggestion}\n\n📝 Напиши черновик: /new`;
-      }
-    } catch (err) {
-      console.warn(`Failed to generate suggestion for user ${user.id}:`, err.message);
-      // Don't include suggestion if generation fails, just send base message
-    }
-  } else {
-    // AI not configured
-    text += '\n\nЕсли нет идей о чем писать, настрой AI-ассистента, чтобы он подсказал новую тему, основываясь на твоих имеющихся текстах: /setai';
-  }
-
   try {
+    console.log(`[Reminder] Starting reminder for user ${user.id}, provider: ${user.ai_provider}`);
+
+    const stats = await getTodayStats(user.id);
+    let text = '✍️ Время писать!\n\n';
+    if (stats?.chars_written > 0) {
+      text += `Уже написано сегодня: ${stats.chars_written} зн. · ${stats.drafts_count} черновика`;
+    } else {
+      text += 'Сегодня ещё ничего не написано. Начни с одного предложения.';
+    }
+
+    // Add AI suggestion or prompt to set up AI
+    if (user.ai_provider !== 'none') {
+      console.log(`[Reminder] AI enabled for user ${user.id}, fetching posts...`);
+      // User has AI configured
+      try {
+        const posts = await getRecentPublishedPosts(user.id, 15);
+        console.log(`[Reminder] Got ${posts.length} posts for user ${user.id}`);
+        if (posts.length >= 3) {
+          console.log(`[Reminder] Generating suggestion for user ${user.id}...`);
+          const suggestion = await generateSuggestion(posts, user);
+          text += `\n\n💡 Идея для поста:\n${suggestion}\n\n📝 Напиши черновик: /new`;
+          console.log(`[Reminder] Suggestion generated for user ${user.id}`);
+        }
+      } catch (err) {
+        console.warn(`[Reminder] Failed to generate suggestion for user ${user.id}:`, err.message);
+        // Don't include suggestion if generation fails, just send base message
+      }
+    } else {
+      // AI not configured
+      text += '\n\nЕсли нет идей о чем писать, настрой AI-ассистента, чтобы он подсказал новую тему, основываясь на твоих имеющихся текстах: /setai';
+    }
+
+    console.log(`[Reminder] Sending message to user ${user.id} (tg: ${user.telegram_user_id})`);
     await bot.telegram.sendMessage(user.telegram_user_id, text);
-    console.log(`Reminder sent to user ${user.id} (tg: ${user.telegram_user_id})`);
+    console.log(`[Reminder] Reminder sent to user ${user.id} (tg: ${user.telegram_user_id})`);
   } catch (err) {
-    console.error(`Reminder failed for user ${user.id} (tg: ${user.telegram_user_id}):`, err.message);
+    console.error(`[Reminder] Reminder failed for user ${user.id} (tg: ${user.telegram_user_id}):`, err.message, err.stack);
   }
 }
 
