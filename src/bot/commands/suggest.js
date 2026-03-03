@@ -48,9 +48,11 @@ export async function suggestCommand(ctx) {
 
     // Check minimum
     if (posts.length < 3) {
-      await ctx.editMessageText(statusMsg.message_id,
-        'Пока мало публикаций (нужно минимум 3). Напиши и опубликуй несколько постов.',
-        { chat_id: userId }
+      await ctx.telegram.editMessageText(
+        userId,
+        statusMsg.message_id,
+        undefined,
+        'Пока мало публикаций (нужно минимум 3). Напиши и опубликуй несколько постов.'
       );
       return;
     }
@@ -58,15 +60,23 @@ export async function suggestCommand(ctx) {
     // Generate suggestion
     const suggestion = await generateSuggestion(posts, user);
 
-    await ctx.editMessageText(statusMsg.message_id,
-      `💡 Идея для следующего поста:\n\n${suggestion}`,
-      { chat_id: userId }
+    await ctx.telegram.editMessageText(
+      userId,
+      statusMsg.message_id,
+      undefined,
+      `💡 Идея для следующего поста:\n\n${suggestion}`
     );
   } catch (err) {
     console.error('Suggestion error:', err);
-    await ctx.editMessageText(statusMsg.message_id,
-      `Ошибка при генерации идеи: ${err.message}`,
-      { chat_id: userId }
-    );
+    try {
+      await ctx.telegram.editMessageText(
+        userId,
+        statusMsg.message_id,
+        undefined,
+        `Ошибка при генерации идеи: ${err.message}`
+      );
+    } catch {
+      await ctx.reply(`Ошибка при генерации идеи: ${err.message}`);
+    }
   }
 }
