@@ -72,3 +72,10 @@ export async function getRecentDrafts(userId, limit = 15) {
   );
   return result.rows;
 }
+
+export async function deleteDraft(draftId) {
+  await query(
+    'DELETE FROM drafts WHERE id = $1',
+    [draftId]
+  );
+}
