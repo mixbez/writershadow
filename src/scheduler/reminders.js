@@ -18,14 +18,25 @@ export function startScheduler() {
 }
 
 function getUserLocalTime(timezone) {
-  const now = new Date();
-  const formatted = new Intl.DateTimeFormat('en-GB', {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(now);
-  const [hh, mm] = formatted.split(':').map(Number);
+  try {
+    const now = new Date();
+    const formatted = new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(now);
+    const [hh, mm] = formatted.split(':').map(Number);
+    const slot = Math.floor(mm / 5) * 5;
+    return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
+  } catch {
+    return null; // invalid timezone — skip this user
+  }
+}
+
+function roundToFiveMinutes(timeStr) {
+  // Accepts "HH:MM" or "HH:MM:SS", rounds minutes to nearest 5-min slot
+  const [hh, mm] = timeStr.split(':').map(Number);
   const slot = Math.floor(mm / 5) * 5;
   return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
 }
@@ -38,31 +49,42 @@ async function checkReminders() {
       AND blog_channel_id IS NOT NULL AND draft_group_id IS NOT NULL
     `);
 
+    console.log(`[Reminder] Found ${users.length} user(s) with reminders enabled`);
+    if (users.length === 0) return;
+
     const today = new Date().toISOString().slice(0, 10);
 
     for (const user of users) {
       const currentSlot = getUserLocalTime(user.timezone);
-      const reminderSlot = user.reminder_time.slice(0, 5);
+      if (!currentSlot) {
+        console.warn(`[Reminder] Invalid timezone "${user.timezone}" for user ${user.id}`);
+        continue;
+      }
+
+      const reminderSlot = roundToFiveMinutes(user.reminder_time);
+      console.log(`[Reminder] user ${user.id}: currentSlot=${currentSlot} reminderSlot=${reminderSlot} tz=${user.timezone}`);
 
       if (currentSlot === reminderSlot) {
         const lockKey = `reminder:${user.id}:${today}`;
         const sent = await redis.get(lockKey);
-        if (sent) continue;
-        await redis.set(lockKey, '1', 86400);
-        await sendDailyReminder(user);
+        if (!sent) {
+          await redis.set(lockKey, '1', 86400);
+          await sendDailyReminder(user);
+        }
       }
 
-      // Evening nudge
+      // Evening nudge (separate block — doesn't skip with continue)
       if (user.evening_nudge_enabled) {
-        const nudgeSlot = user.evening_nudge_time.slice(0, 5);
+        const nudgeSlot = roundToFiveMinutes(user.evening_nudge_time);
         if (currentSlot === nudgeSlot) {
           const nudgeLock = `nudge:${user.id}:${today}`;
           const nudgeSent = await redis.get(nudgeLock);
-          if (nudgeSent) continue;
-          const stats = await getTodayStats(user.id);
-          if (!stats || stats.chars_written === 0) {
-            await redis.set(nudgeLock, '1', 86400);
-            await sendNudge(user);
+          if (!nudgeSent) {
+            const stats = await getTodayStats(user.id);
+            if (!stats || stats.chars_written === 0) {
+              await redis.set(nudgeLock, '1', 86400);
+              await sendNudge(user);
+            }
           }
         }
       }
@@ -82,8 +104,9 @@ async function sendDailyReminder(user) {
   }
   try {
     await bot.telegram.sendMessage(user.telegram_user_id, text);
+    console.log(`Reminder sent to user ${user.id} (tg: ${user.telegram_user_id})`);
   } catch (err) {
-    console.error(`Reminder failed for ${user.telegram_user_id}:`, err.message);
+    console.error(`Reminder failed for user ${user.id} (tg: ${user.telegram_user_id}):`, err.message);
   }
 }
 

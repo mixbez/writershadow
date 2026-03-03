@@ -105,7 +105,7 @@ async function handleCancelPost(ctx, data) {
 }
 
 async function handleToggleSetting(ctx, data) {
-  const setting = data.split('_')[1]; // e.g., 'toggle_evening_nudge'
+  const setting = data.slice('toggle_'.length); // 'evening_nudge' or 'weekly_summary'
   const userId = ctx.from.id;
   const user = await getUser(userId);
 
@@ -114,19 +114,15 @@ async function handleToggleSetting(ctx, data) {
     return;
   }
 
-  // Toggle the setting
   let field = '';
-  let labelOn = '';
-  let labelOff = '';
+  let label = '';
 
   if (setting === 'evening_nudge') {
     field = 'evening_nudge_enabled';
-    labelOn = 'Вечерний пинок: Вкл';
-    labelOff = 'Вечерний пинок: Выкл';
+    label = 'Вечерний пинок';
   } else if (setting === 'weekly_summary') {
     field = 'weekly_summary_enabled';
-    labelOn = 'Еженедельная сводка: Вкл';
-    labelOff = 'Еженедельная сводка: Выкл';
+    label = 'Еженедельная сводка';
   }
 
   if (!field) return;
@@ -138,17 +134,14 @@ async function handleToggleSetting(ctx, data) {
   );
   const updatedUser = result.rows[0];
 
-  // Update button text
-  const newLabel = updatedUser[field] ? labelOn : labelOff;
-  const callbackData = data.split('_').slice(0, 2).join('_');
+  // Rebuild full keyboard with updated values
+  const buttons = [
+    [{ text: 'Изменить время напоминания', callback_data: 'settings_time' }],
+    [{ text: `Вечерний пинок: ${updatedUser.evening_nudge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_evening_nudge' }],
+    [{ text: `Еженедельная сводка: ${updatedUser.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_weekly_summary' }],
+    [{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }],
+  ];
 
-  await ctx.editMessageReplyMarkup({
-    inline_keyboard: [
-      [
-        { text: newLabel, callback_data: `${callbackData}_${setting}` },
-      ],
-    ],
-  });
-
-  await ctx.answerCbQuery(`${newLabel}`, false);
+  await ctx.editMessageReplyMarkup({ inline_keyboard: buttons });
+  await ctx.answerCbQuery(`${label}: ${updatedUser[field] ? 'Вкл' : 'Выкл'}`, false);
 }

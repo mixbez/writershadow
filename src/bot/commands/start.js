@@ -15,9 +15,11 @@ export async function startCommand(ctx) {
   }
 
   // Initialize setup session
+  if (!ctx.session) ctx.session = {};
   ctx.session.setupStep = 'channel';
   await ctx.reply(
     'Привет! Я WriterShadow — помогаю писать регулярно. Давай настроим.\n\n' +
-    'Напиши @username канала или перешли любое сообщение из канала, где публикуешь посты.'
+    '1️⃣ Добавь меня как администратора в канал, где публикуешь посты (нужно право «Публикация сообщений»).\n\n' +
+    'Затем напиши @username этого канала или перешли из него любое сообщение.'
   );
 }

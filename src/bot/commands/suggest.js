@@ -43,14 +43,20 @@ export async function suggestCommand(ctx) {
   const statusMsg = await ctx.reply('⏳ Анализирую твои тексты...');
 
   try {
-    // Get recent published posts
     const posts = await getRecentPublishedPosts(user.id, 15);
 
-    // Check minimum
     if (posts.length < 3) {
-      await ctx.editMessageText(statusMsg.message_id,
-        'Пока мало публикаций (нужно минимум 3). Напиши и опубликуй несколько постов.',
-        { chat_id: userId }
+      await ctx.telegram.editMessageText(
+        userId,
+        statusMsg.message_id,
+        undefined,
+        'Мало постов для анализа (нужно минимум 3).\n\n' +
+        'Из-за технических ограничений мне недоступна история канала напрямую, но ты можешь экспортировать её сам:\n\n' +
+        '1. Открой свой канал в Telegram Desktop\n' +
+        '2. Меню → Экспорт истории чата\n' +
+        '3. Формат: JSON, снять галочки с медиафайлов\n' +
+        '4. Отправь мне файл result.json в этот чат\n\n' +
+        'После этого /suggest будет работать.'
       );
       return;
     }
@@ -58,15 +64,23 @@ export async function suggestCommand(ctx) {
     // Generate suggestion
     const suggestion = await generateSuggestion(posts, user);
 
-    await ctx.editMessageText(statusMsg.message_id,
-      `💡 Идея для следующего поста:\n\n${suggestion}`,
-      { chat_id: userId }
+    await ctx.telegram.editMessageText(
+      userId,
+      statusMsg.message_id,
+      undefined,
+      `💡 Идея для следующего поста:\n\n${suggestion}`
     );
   } catch (err) {
     console.error('Suggestion error:', err);
-    await ctx.editMessageText(statusMsg.message_id,
-      `Ошибка при генерации идеи: ${err.message}`,
-      { chat_id: userId }
-    );
+    try {
+      await ctx.telegram.editMessageText(
+        userId,
+        statusMsg.message_id,
+        undefined,
+        `Ошибка при генерации идеи: ${err.message}`
+      );
+    } catch {
+      await ctx.reply(`Ошибка при генерации идеи: ${err.message}`);
+    }
   }
 }

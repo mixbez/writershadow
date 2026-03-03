@@ -41,6 +41,7 @@ export async function combineCommand(ctx) {
 
   draftsList += '\nВведи номера через пробел (например: 1 3 5) или напиши «все».';
 
+  if (!ctx.session) ctx.session = {};
   ctx.session.combineStep = 'selecting';
   ctx.session.combineAvailableDrafts = recentDrafts.map(d => d.id);
   await ctx.reply(draftsList);
@@ -49,6 +50,7 @@ export async function combineCommand(ctx) {
 // This is called from the message handler when combining
 export async function handleCombineSelection(ctx, text) {
   const userId = ctx.from.id;
+  if (!ctx.session) ctx.session = {};
   const availableIds = ctx.session.combineAvailableDrafts || [];
 
   let selectedIds = [];
