@@ -48,7 +48,7 @@ async function checkReminders() {
     const { rows: users } = await query(`
       SELECT * FROM users
       WHERE is_active = TRUE AND reminder_enabled = TRUE
-      AND blog_channel_id IS NOT NULL AND draft_group_id IS NOT NULL
+      AND blog_channel_id IS NOT NULL
     `);
 
     console.log(`[Reminder] Found ${users.length} user(s) with reminders enabled`);
