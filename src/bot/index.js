@@ -9,6 +9,7 @@ import { newDraftCommand } from './commands/newDraft.js';
 import { combineCommand } from './commands/combine.js';
 import { postCommand } from './commands/post.js';
 import { suggestCommand } from './commands/suggest.js';
+import { infoCommand } from './commands/info.js';
 import { adminCommand } from './commands/admin.js';
 import { handleDraftMessage } from './handlers/draftMessage.js';
 import { handleCallbackQuery } from './handlers/callbackQuery.js';
@@ -42,7 +43,23 @@ bot.command('new', newDraftCommand);
 bot.command('combine', combineCommand);
 bot.command('post', postCommand);
 bot.command('suggest', suggestCommand);
+bot.command('info', infoCommand);
 bot.command('admin', adminCommand);
+
+// Set bot commands menu
+bot.telegram.setMyCommands([
+  { command: 'start', description: 'Настройка канала для публикации' },
+  { command: 'new', description: 'Создать новый черновик' },
+  { command: 'drafts', description: 'Список черновиков (или /drafts тег)' },
+  { command: 'drafts_full', description: 'Полный текст черновиков' },
+  { command: 'combine', description: 'Объединить черновики в пост' },
+  { command: 'post', description: 'Опубликовать или отложить пост' },
+  { command: 'suggest', description: 'Идея для следующего поста' },
+  { command: 'setai', description: 'Выбрать AI-провайдера' },
+  { command: 'settings', description: 'Настройки напоминаний и AI' },
+  { command: 'stats', description: 'Статистика письма' },
+  { command: 'info', description: 'Подробная инструкция по боту' },
+]).catch(err => console.error('Error setting commands:', err));
 
 bot.on('message', handleDraftMessage);
 bot.on('callback_query', handleCallbackQuery);
