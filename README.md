@@ -1,8 +1,477 @@
 # WriterShadow
 
-Telegram-бот для авторов: помогает вести черновики, собирать из них посты и публиковать в канал. Поддерживает AI-помощника (Claude / Groq), напоминания о написании текстов и статистику.
+**English version below** | [Русская версия ниже](#writershadow-русская-версия)
 
 ---
+
+## WriterShadow (English)
+
+A Telegram bot for writers: helps manage drafts, combine them into posts, and publish to a channel. Supports AI assistance (Claude / Groq), writing reminders, and statistics.
+
+### Contents
+
+- [What the bot does](#what-the-bot-does)
+- [Architecture](#architecture)
+- [Project structure](#project-structure)
+- [Database](#database)
+- [Bot commands](#bot-commands)
+- [AI integration](#ai-integration)
+- [Subscription system](#subscription-system)
+- [Security](#security)
+- [Environment variables](#environment-variables)
+- [Running](#running)
+- [Tests](#tests)
+- [Deployment and releases](#deployment-and-releases)
+
+---
+
+### What the bot does
+
+WriterShadow solves a core problem for authors — the gap between when an idea appears and when a post gets published.
+
+**Workflow:**
+
+1. The writer saves short drafts — thoughts, sketches, quotes — using `/new`
+2. When enough drafts accumulate, `/combine` assembles them into a post
+3. AI (optional) generates connective text between fragments
+4. `/post` publishes the finished text directly to a Telegram channel or schedules it for a specific time
+5. Daily reminders and weekly statistics help maintain writing momentum
+
+---
+
+### Architecture
+
+```
+Telegram ──webhook──► Fastify (HTTP) ──► Telegraf (bot)
+                                              │
+                          ┌───────────────────┼───────────────────┐
+                          ▼                   ▼                   ▼
+                    PostgreSQL             Redis              AI Provider
+                    (data)                (sessions)         (Claude / Groq)
+```
+
+**Stack:**
+
+| Layer | Technology |
+|---|---|
+| Runtime | Node.js 20, ES modules |
+| Bot framework | Telegraf 4.16 |
+| HTTP server | Fastify 4.28 |
+| Database | PostgreSQL 16 |
+| Cache / Sessions | Redis 7 |
+| AI | Anthropic SDK (Claude) + Groq SDK |
+| Scheduler | node-cron 3.0 |
+| Encryption | Node.js crypto (AES-256-GCM) |
+| Deployment | Docker + docker-compose |
+
+---
+
+### Project structure
+
+```
+writershadow/
+├── src/
+│   ├── index.js                    # Entry point: Fastify + webhook + scheduler
+│   ├── bot/
+│   │   ├── index.js                # Command registration and middleware
+│   │   ├── commands/               # Command handlers (one file per command)
+│   │   │   ├── start.js            # /start — initial setup, configure channel
+│   │   │   ├── new.js              # /new — create draft
+│   │   │   ├── drafts.js           # /drafts — list drafts
+│   │   │   ├── draftsFull.js       # /drafts_full — show full draft text
+│   │   │   ├── combine.js          # /combine — assemble post from drafts
+│   │   │   ├── post.js             # /post — publish or schedule
+│   │   │   ├── delete.js           # /delete — remove drafts
+│   │   │   ├── setai.js            # /setai — choose AI provider
+│   │   │   ├── suggest.js          # /suggest — idea for next post (Pro)
+│   │   │   ├── settings.js         # /settings — reminders and timezone
+│   │   │   ├── stats.js            # /stats — writing statistics
+│   │   │   ├── admin.js            # /admin — manage subscriptions
+│   │   │   └── info.js             # /info — bot guide
+│   │   ├── handlers/
+│   │   │   ├── draftMessage.js     # Handle text without command (→ draft)
+│   │   │   └── callbackQuery.js    # Handle inline button presses
+│   │   └── middleware/
+│   │       ├── session.js          # Redis sessions (7-day TTL)
+│   │       ├── requireAdmin.js     # Check admin rights
+│   │       └── requireSetup.js     # Check channel setup
+│   ├── db/
+│   │   ├── index.js                # PostgreSQL connection pool
+│   │   ├── migrate.js              # Run migrations on startup
+│   │   ├── models/
+│   │   │   ├── user.js             # User CRUD
+│   │   │   ├── draft.js            # Draft CRUD
+│   │   │   ├── post.js             # Post CRUD
+│   │   │   ├── dailyStats.js       # Daily statistics
+│   │   │   └── commandLog.js       # Command audit log
+│   │   └── migrations/             # SQL migrations (1…7, additive only)
+│   ├── ai/
+│   │   ├── provider.js             # Router: select provider
+│   │   ├── anthropic.js            # Anthropic SDK wrapper
+│   │   ├── groq.js                 # Groq SDK wrapper
+│   │   ├── sanitize.js             # Prompt injection defense
+│   │   └── prompt.js               # Prompt templates
+│   ├── redis/
+│   │   └── client.js               # Redis connection
+│   ├── scheduler/
+│   │   └── reminders.js            # Cron tasks (reminders, publications)
+│   ├── api/
+│   │   └── analytics.js            # REST endpoints for analytics
+│   ├── crypto/
+│   │   └── keys.js                 # Encrypt/decrypt API keys
+│   └── utils/
+│       ├── tags.js                 # Parse and strip tags (## tagname)
+│       ├── splitText.js            # Split long texts into parts
+│       └── timezone.js             # Convert local time to UTC
+├── tests/                          # Jest tests
+├── Dockerfile
+├── docker-compose.yml
+├── .env.example
+├── SECURITY.md
+└── CLAUDE.md
+```
+
+---
+
+### Database
+
+#### `users`
+
+One user = one row. Stores all settings.
+
+| Field | Description |
+|---|---|
+| `telegram_id` | Unique user ID in Telegram |
+| `channel_id` | Channel ID for publishing posts |
+| `draft_group_id` | Group ID for storing drafts (optional) |
+| `reminder_time` | Reminder time (`HH:MM`) |
+| `timezone` | Timezone (e.g., `Europe/Moscow`) |
+| `evening_nudge` | Is evening reminder enabled |
+| `ai_provider` | Provider: `none` / `groq` / `anthropic` / `paid` |
+| `encrypted_api_key` | Encrypted AES-256-GCM user key |
+| `subscription_status` | `trial` / `active` / `expired` |
+| `demo_expires_at` | Trial period expiration date |
+| `ai_tags_enabled` | Auto-generate tags (Pro) |
+| `bridge_enabled` | Insert connective text on combine (Pro) |
+
+#### `drafts`
+
+Text fragments saved by user.
+
+| Field | Description |
+|---|---|
+| `user_id` | FK → users |
+| `post_id` | FK → posts (if draft is part of post) |
+| `content` | Draft text (including tags `## tagname`) |
+| `char_count` | Character count |
+| `used` | Flag: used in post |
+| `created_at` | Creation time |
+
+#### `posts`
+
+Finished posts (published or scheduled).
+
+| Field | Description |
+|---|---|
+| `user_id` | FK → users |
+| `content` | Final post text |
+| `status` | `draft` / `published` / `imported` / `scheduled` |
+| `channel_message_id` | Message ID in channel (after publishing) |
+| `scheduled_at` | Scheduled publication time (UTC) |
+| `published_at` | Actual publication time |
+
+#### `daily_stats`
+
+Aggregated statistics per user per day.
+
+| Field | Description |
+|---|---|
+| `user_id` | FK → users |
+| `date` | Date (`YYYY-MM-DD`) |
+| `chars_written` | Characters written per day |
+| `drafts_created` | Drafts created |
+| `posts_published` | Posts published |
+
+#### `command_logs`
+
+Audit of all command calls.
+
+| Field | Description |
+|---|---|
+| `user_id` | FK → users |
+| `command` | Command name |
+| `success` | Success / error |
+| `error_message` | Error text (if any) |
+| `data` | Additional data as JSON |
+
+---
+
+### Bot commands
+
+#### Core workflow
+
+##### `/start`
+Initial setup. Bot asks for channel ID or username. After saving, user gets access to all commands.
+
+##### `/new [text]`
+Create a draft.
+- If text is provided — saves immediately
+- If no text — bot waits for next message
+- Any text message without a command also becomes a draft
+- Pro: if `ai_tags_enabled` is on, AI auto-adds tags (`## tagname`)
+
+##### `/drafts [tag]`
+List drafts with dates and character counts. Can filter by tag: `/drafts travel`.
+
+##### `/drafts_full [tag]`
+Same as above, but shows full text of each draft.
+
+##### `/combine`
+Interactive post assembler:
+1. Bot shows drafts with buttons — user selects needed ones
+2. Drafts combine in selection order
+3. Pro (bridge_enabled): AI inserts 1–2 connective sentences between fragments
+4. Shows preview; can save as post or cancel
+
+##### `/post`
+Publish or schedule. If there's a finished post:
+- **Now** — sends immediately
+- **Schedule** — asks for date and time (in user's timezone)
+
+After publishing, bot asks: delete used drafts or keep them.
+
+Long texts (>4096 chars) auto-split into parts.
+
+##### `/delete [all]`
+Delete drafts.
+- `/delete` — select specific ones via buttons
+- `/delete all` — delete all at once
+
+#### AI and settings
+
+##### `/setai`
+Choose AI provider:
+- **Groq** — free, shared key, LLaMA 3.3-70B model
+- **Anthropic** — user provides own API key (encrypted storage)
+- **Pro** — bot owner's key, full feature set
+
+##### `/suggest` *(Pro)*
+Generate next post idea based on last 15 published. Requires minimum 3 posts in history. Returns topic and angle (max 150 words).
+
+##### `/settings`
+Configure reminders:
+- Daily reminder time
+- Timezone
+- Enable / disable evening reminder (if no writing that day)
+
+##### `/stats`
+Statistics: characters, drafts, and posts for today, week, and month. Shows trend (up / down).
+
+#### Administrative
+
+##### `/admin`
+Owner only (by `ADMIN_USER_ID`):
+- Grant / revoke Pro subscription
+- View aggregated stats for all users
+
+##### `/info`
+Detailed guide for all commands in the bot.
+
+---
+
+### AI integration
+
+#### Three usage scenarios
+
+```
+ai_provider = 'groq'       → Groq API (free, shared key)
+ai_provider = 'anthropic'  → Anthropic API (user's key, decrypted)
+ai_provider = 'paid'       → Anthropic API (owner's key, Pro mode)
+```
+
+#### Generated content
+
+| Function | Input | Output |
+|---|---|---|
+| `generateSuggestion` | Up to 15 published posts | Next topic idea (≤150 words) |
+| `generateTags` | Draft text | 1–3 comma-separated tags |
+| `generateBridge` | Two adjacent drafts | 1–2 connective sentences |
+
+#### Prompt injection defense (`src/ai/sanitize.js`)
+
+Before sending to AI, all user text is checked for attack patterns:
+- `ignore instructions`, `you are now`, `forget everything`
+- `act as`, `pretend`, `jailbreak`, `DAN mode`
+
+Additionally:
+- XML entity escaping (`&`, `<`, `>`)
+- Text truncation (max 500–800 chars per request)
+
+---
+
+### Subscription system
+
+| Tier | Condition | AI features |
+|---|---|---|
+| **Free** | Default | None (drafts and publishing only) |
+| **Trial** | First 14 days | Groq for `/suggest` |
+| **Pro** | `subscription_status = 'active'` | Full access: auto-tags, bridges, `/suggest` with Claude |
+
+Subscriptions granted manually via `/admin`. Expired subscriptions revoked automatically hourly (cron).
+
+---
+
+### Security
+
+#### API key encryption
+
+User keys are encrypted before storage in DB:
+
+```
+AES-256-GCM(plaintext, key=ENCRYPTION_KEY, iv=random_16_bytes)
+→ "iv_hex:authTag_hex:ciphertext_hex"
+```
+
+`ENCRYPTION_KEY` — 64 hex characters (32 bytes), set in `.env`.
+
+#### Authorization
+
+- **Admin middleware** (`requireAdmin.js`): compares `ctx.from.id` with `ADMIN_USER_ID` from env. Non-admins silently ignored.
+- **Setup middleware** (`requireSetup.js`): most commands unavailable until user completes initial setup via `/start`.
+
+#### SQL
+
+All queries use parameterization (`$1, $2, ...`). No string concatenation in SQL.
+
+#### Migrations
+
+All migrations are additive (only `ADD COLUMN`, `CREATE TABLE`). Destructive schema changes forbidden — allows safe rollback to previous image version without data loss.
+
+---
+
+### Environment variables
+
+See `.env.example`.
+
+| Variable | Required | Description |
+|---|---|---|
+| `BOT_TOKEN` | yes | Telegram bot token |
+| `BOT_WEBHOOK_URL` | yes | Webhook URL (prod) |
+| `PORT` | no | Fastify port (default `3001`) |
+| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `REDIS_URL` | yes | Redis connection URL |
+| `ENCRYPTION_KEY` | yes | 64 hex chars for AES-256-GCM |
+| `ADMIN_USER_ID` | yes | Admin's Telegram ID |
+| `OWNER_CONTACT` | yes | Contact for subscription signup |
+| `ANTHROPIC_API_KEY` | no | Claude key (for Pro users) |
+| `GROQ_API_KEY` | no | Groq key (shared, optional) |
+| `NODE_ENV` | no | `production` / `development` |
+
+---
+
+### Running
+
+#### Development (polling)
+
+```bash
+cp .env.example .env
+# fill in .env
+
+npm install
+npm run dev    # polling mode, no webhook needed
+```
+
+#### Production (Docker)
+
+```bash
+cp .env.example .env
+# fill in .env, including BOT_WEBHOOK_URL
+
+docker compose up -d
+```
+
+Container startup automatically applies all pending migrations.
+
+---
+
+### Tests
+
+```bash
+npm test                            # all tests
+npm run test:coverage               # with coverage report
+npx jest tests/crypto.test.js       # single file
+```
+
+Tests in `tests/`. Uses Jest with `--experimental-vm-modules` for ES module support.
+
+**Coverage priority:**
+
+| Module | Why critical |
+|---|---|
+| `src/crypto/keys.js` | Key loss = can't decrypt user data |
+| `src/ai/sanitize.js` | Error = prompt injection bypass |
+| `src/bot/middleware/requireAdmin.js` | Error = anyone becomes admin |
+| `src/bot/middleware/requireSetup.js` | Error = access without setup |
+| `src/db/models/user.js` | Incorrect user data handling |
+
+---
+
+### Deployment and releases
+
+#### Branches
+
+```
+feature/name  →  dev  →  master (production)
+```
+
+Never push directly to `master`.
+
+#### Release
+
+```bash
+# 1. Check tests pass
+npm test
+
+# 2. Merge dev into master and tag
+git checkout master
+git merge dev
+git tag v1.x.x
+git push origin master
+git push origin v1.x.x
+
+# 3. Build image
+docker build -t writershadow:v1.x.x .
+
+# 4. Apply migrations
+node src/db/migrate.js
+
+# 5. Deploy
+VERSION=v1.x.x docker compose up -d
+
+# 6. Check logs
+docker logs writershadow-app --tail=50
+```
+
+#### Rollback
+
+```bash
+VERSION=v1.x-1 docker compose up -d
+```
+
+Previous version image must be built in advance.
+
+#### CI
+
+GitHub Actions runs `npm test` and `npm audit` on every push and PR to `master`/`dev`.
+Config: `.github/workflows/ci.yml`.
+
+---
+
+---
+
+# WriterShadow (Русская версия)
+
+Telegram-бот для авторов: помогает вести черновики, собирать из них посты и публиковать в канал. Поддерживает AI-помощника (Claude / Groq), напоминания о написании текстов и статистику.
 
 ## Содержание
 
