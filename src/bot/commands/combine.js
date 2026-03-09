@@ -2,6 +2,7 @@ import { getUser, isUserSetup } from '../../db/models/user.js';
 import { getUnusedDrafts, getDraftsByIds } from '../../db/models/draft.js';
 import { createDraftPost } from '../../db/models/post.js';
 import { redis } from '../../redis/client.js';
+import { generateBridge } from '../../ai/provider.js';
 
 export async function combineCommand(ctx) {
   const userId = ctx.from.id;
@@ -71,11 +72,44 @@ export async function handleCombineSelection(ctx, text) {
 
   // Get selected drafts in chronological order
   const selectedDrafts = await getDraftsByIds(selectedIds);
-  const postText = selectedDrafts.map(d => d.text).join('\n\n');
+  const user = await getUser(userId);
+
+  // Build post text with bridges if enabled (Feature 7)
+  let postText = '';
+  if (selectedDrafts.length === 1) {
+    postText = selectedDrafts[0].text;
+  } else if (user.bridge_enabled && user.ai_provider !== 'none') {
+    // Generate bridges between drafts
+    const parts = [];
+    for (let i = 0; i < selectedDrafts.length; i++) {
+      parts.push(selectedDrafts[i].text);
+
+      // Generate bridge to next draft
+      if (i < selectedDrafts.length - 1) {
+        try {
+          const bridge = await generateBridge(
+            selectedDrafts[i].text,
+            selectedDrafts[i + 1].text,
+            user
+          );
+          if (bridge) {
+            parts.push(bridge);
+          }
+        } catch (err) {
+          console.error('Bridge generation error:', err);
+          // Silently skip bridge, drafts will be combined without it
+        }
+      }
+    }
+    postText = parts.join('\n\n');
+  } else {
+    // No bridge - just concatenate
+    postText = selectedDrafts.map(d => d.text).join('\n\n');
+  }
+
   const charCount = postText.length;
 
   // Create draft post
-  const user = await getUser(userId);
   const post = await createDraftPost(user.id, postText, selectedIds);
 
   // Store pending post in Redis

@@ -26,7 +26,11 @@ export async function settingsCommand(ctx) {
 ── Напоминания ──
 Ежедневное: ${user.reminder_time} ${user.timezone}
 Вечерний пинок: ${user.evening_nudge_enabled ? 'Вкл' : 'Выкл'}
-Еженедельная сводка: ${user.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`;
+Еженедельная сводка: ${user.weekly_summary_enabled ? 'Вкл' : 'Выкл'}
+
+── Генерация ──
+AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
+Связки между черновиками: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`;
 
   const buttons = [
     [{ text: 'Изменить время напоминания', callback_data: 'settings_time' }],
@@ -35,6 +39,12 @@ export async function settingsCommand(ctx) {
     ],
     [
       { text: `Еженедельная сводка: ${user.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_weekly_summary' },
+    ],
+    [
+      { text: `AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' },
+    ],
+    [
+      { text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' },
     ],
     [{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }],
   ];

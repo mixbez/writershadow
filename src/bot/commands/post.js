@@ -52,7 +52,7 @@ export async function postCommand(ctx) {
     return;
   }
 
-  // Show post with publish/cancel buttons
+  // Show post with publish/cancel/schedule buttons
   const truncated = post.text.substring(0, 500) + (post.text.length > 500 ? '...' : '');
   await ctx.reply(
     `Опубликовать этот пост?\n\n${truncated}`,
@@ -61,6 +61,9 @@ export async function postCommand(ctx) {
         inline_keyboard: [
           [
             { text: '✅ Опубликовать', callback_data: `publish_post:${post.id}` },
+            { text: '⏰ Отложить', callback_data: `schedule_post:${post.id}` },
+          ],
+          [
             { text: '❌ Отмена', callback_data: `cancel_post:${post.id}` },
           ],
         ],
