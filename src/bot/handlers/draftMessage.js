@@ -14,6 +14,9 @@ export async function handleDraftMessage(ctx) {
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return;
 
+  // Skip commands - let command handlers process them
+  if (text.startsWith('/')) return;
+
   // Check if in private chat (setup flow)
   if (ctx.chat.type === 'private') {
     return handleSetupMessage(ctx, text);
