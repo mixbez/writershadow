@@ -14,8 +14,13 @@ export async function handleDraftMessage(ctx) {
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return;
 
+  console.log(`[MSG] User ${ctx.from.id}: "${text}" | setupStep=${ctx.session.setupStep}`);
+
   // Skip commands - let command handlers process them
-  if (text.startsWith('/')) return;
+  if (text.startsWith('/')) {
+    console.log(`[CMD] Skipping command, letting handler process it`);
+    return;
+  }
 
   // Check if in private chat (setup flow)
   if (ctx.chat.type === 'private') {
@@ -94,8 +99,6 @@ async function handleSetupMessage(ctx, text) {
   try {
     if (setupStep === 'channel') {
       await setupChannel(ctx, userId, text);
-    } else if (setupStep === 'group') {
-      await setupGroup(ctx, userId, text);
     } else if (setupStep === 'time') {
       await setupReminderTime(ctx, userId, text);
     } else if (setupStep === 'timezone') {
@@ -135,12 +138,12 @@ async function setupChannel(ctx, userId, text) {
     return;
   }
 
-  // Save channel and move to next step
+  // Save channel and finish setup
   await updateUser(userId, { blog_channel_id: channelId });
-  ctx.session.setupStep = 'group';
+  ctx.session.setupStep = null;
   await ctx.reply(
-    'Спасибо! Канал настроен.\n\n' +
-    'Теперь пришли @username или перешли сообщение из группы, где ведёшь черновики.'
+    'Готово! Канал настроен.\n\n' +
+    'Теперь используй /drafts для управления черновиками, /combine для сборки постов, /post для публикации.'
   );
 }
 

@@ -2,9 +2,11 @@ import { getUser, isUserSetup, updateUser } from '../../db/models/user.js';
 
 export async function settingsCommand(ctx) {
   const userId = ctx.from.id;
+  console.log(`[SETTINGS] Called by user ${userId}`);
 
   // Only in private chat
   if (ctx.chat.type !== 'private') {
+    console.log(`[SETTINGS] Not private chat: ${ctx.chat.type}`);
     await ctx.reply('Эта команда доступна только в личном чате.');
     return;
   }

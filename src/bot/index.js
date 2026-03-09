@@ -16,6 +16,20 @@ export const bot = new Telegraf(process.env.BOT_TOKEN);
 
 bot.use(session());
 
+bot.use((ctx, next) => {
+  // Ensure session exists
+  if (!ctx.session) {
+    ctx.session = {};
+  }
+  if (ctx.message) {
+    console.log(`[UPDATE] User ${ctx.from.id}: ${ctx.message.text || '[no text]'}`);
+  }
+  if (ctx.callbackQuery) {
+    console.log(`[CALLBACK] User ${ctx.from.id}: ${ctx.callbackQuery.data}`);
+  }
+  return next();
+});
+
 bot.command('start', startCommand);
 bot.command('settings', settingsCommand);
 bot.command('setai', setaiCommand);

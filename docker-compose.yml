@@ -5,9 +5,9 @@ services:
     image: postgres:16-alpine
     container_name: postgres_writershadow
     environment:
-      POSTGRES_DB: writershadow
-      POSTGRES_USER: writershadow
-      POSTGRES_PASSWORD: writershadow_pass
+      POSTGRES_DB: comparity
+      POSTGRES_USER: comparity
+      POSTGRES_PASSWORD: comparity_pass
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -40,8 +40,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      NODE_ENV: production
-      DATABASE_URL: postgresql://writershadow:writershadow_pass@postgres_writershadow:5432/writershadow
+      NODE_ENV: development
+      DATABASE_URL: postgresql://comparity:comparity_pass@postgres_writershadow:5432/writershadow
       REDIS_URL: redis://redis_writershadow:6379
       BOT_TOKEN: ${BOT_TOKEN}
       BOT_WEBHOOK_URL: ${BOT_WEBHOOK_URL}
@@ -55,5 +55,9 @@ services:
 
 volumes:
   postgres_data:
+    external: true
+    name: comparity_pg_data
   redis_data:
+    external: true
+    name: comparity_redis_data
 

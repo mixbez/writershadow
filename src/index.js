@@ -12,7 +12,12 @@ let botStarted = false;
 
 if (process.env.NODE_ENV === 'production') {
   server.post('/ws-webhook', async (req, reply) => {
-    await bot.handleUpdate(req.body);
+    console.log(`[WEBHOOK] Received update:`, JSON.stringify(req.body).substring(0, 200));
+    try {
+      await bot.handleUpdate(req.body);
+    } catch (err) {
+      console.error(`[WEBHOOK] Error:`, err);
+    }
     return { ok: true };
   });
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });

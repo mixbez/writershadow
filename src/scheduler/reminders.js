@@ -43,7 +43,7 @@ async function checkReminders() {
     const { rows: users } = await query(`
       SELECT * FROM users
       WHERE is_active = TRUE AND reminder_enabled = TRUE
-      AND blog_channel_id IS NOT NULL AND draft_group_id IS NOT NULL
+      AND blog_channel_id IS NOT NULL
     `);
 
     const today = new Date().toISOString().slice(0, 10);

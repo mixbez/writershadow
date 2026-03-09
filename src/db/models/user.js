@@ -37,7 +37,7 @@ export async function getUser(telegramUserId) {
 
 export async function isUserSetup(telegramUserId) {
   const user = await getUser(telegramUserId);
-  return user && user.blog_channel_id && user.draft_group_id;
+  return user && user.blog_channel_id;
 }
 
 export async function getUserById(userId) {
