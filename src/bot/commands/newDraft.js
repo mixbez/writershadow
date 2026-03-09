@@ -1,6 +1,9 @@
 import { getUser, isUserSetup } from '../../db/models/user.js';
 import { createDraft } from '../../db/models/draft.js';
 import { upsertDailyStats } from '../../db/models/dailyStats.js';
+import { query } from '../../db/index.js';
+import { generateTags } from '../../ai/provider.js';
+import { appendTags } from '../../utils/tags.js';
 
 // /new <text> — saves text as a draft directly from private chat
 // /new (without text) — prompts user to enter text
@@ -31,7 +34,25 @@ export async function newDraftCommand(ctx) {
 
 async function saveDraft(userId, text) {
   const user = await getUser(userId);
-  await createDraft(user.id, null, null, text);
+  const draft = await createDraft(user.id, null, null, text);
+
+  // Generate tags if enabled (Features 3 & 4)
+  if (user.ai_tags_enabled && user.ai_provider !== 'none') {
+    try {
+      const tags = await generateTags(text, user);
+      if (tags && tags.length > 0) {
+        const taggedText = appendTags(text, tags);
+        // Update draft with tags
+        await query(
+          'UPDATE drafts SET text = $1, char_count = $2 WHERE id = $3',
+          [taggedText, taggedText.length, draft.id]
+        );
+      }
+    } catch (err) {
+      // Silently fail - draft already saved
+      console.error('Tag generation error:', err);
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   await upsertDailyStats(user.id, today, {

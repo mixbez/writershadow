@@ -84,17 +84,12 @@ async function handlePublishPost(ctx, data) {
     // Update post in DB
     await publishPost(postId, channelMessageId);
 
-    // Get drafts used for this post
+    // Get drafts used for this post (don't mark as used yet - wait for user choice)
     const result = await query(
       'SELECT id FROM drafts WHERE post_id = $1',
       [postId]
     );
     const draftIds = result.rows.map(r => r.id);
-
-    // Mark drafts as used
-    if (draftIds.length > 0) {
-      await markDraftsAsUsed(draftIds, postId);
-    }
 
     // Update daily stats
     const today = new Date().toISOString().slice(0, 10);
@@ -136,11 +131,13 @@ async function handleCancelPost(ctx, data) {
 }
 
 async function handleToggleSetting(ctx, data) {
-  const setting = data.split('_')[1]; // e.g., 'evening_nudge', 'ai_tags', 'bridge'
+  const setting = data.substring('toggle_'.length); // e.g., 'evening_nudge', 'ai_tags', 'bridge'
   const userId = ctx.from.id;
+  console.log(`[TOGGLE] Setting: ${setting} for user ${userId}`);
   const user = await getUser(userId);
 
   if (!user) {
+    console.log(`[TOGGLE] User not found`);
     await ctx.answerCbQuery('Пользователь не найден');
     return;
   }
@@ -177,39 +174,59 @@ async function handleToggleSetting(ctx, data) {
   );
   const updatedUser = result.rows[0];
 
-  // Update button text
-  const newLabel = updatedUser[field] ? labelOn : labelOff;
-  const callbackData = data.split('_').slice(0, 2).join('_');
-
-  await ctx.editMessageReplyMarkup({
-    inline_keyboard: [
-      [
-        { text: newLabel, callback_data: `${callbackData}_${setting}` },
-      ],
+  // Rebuild full settings menu with updated values
+  const buttons = [
+    [{ text: 'Изменить время напоминания', callback_data: 'settings_time' }],
+    [
+      { text: `Вечерний пинок: ${updatedUser.evening_nudge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_evening_nudge' },
     ],
-  });
+    [
+      { text: `Еженедельная сводка: ${updatedUser.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_weekly_summary' },
+    ],
+    [
+      { text: `AI-теги: ${updatedUser.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' },
+    ],
+    [
+      { text: `Связки: ${updatedUser.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' },
+    ],
+    [{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }],
+  ];
 
+  const newLabel = updatedUser[field] ? labelOn : labelOff;
+  console.log(`[TOGGLE] Updated ${field} to ${newLabel}, editing menu...`);
+  try {
+    await ctx.editMessageReplyMarkup({ inline_keyboard: buttons });
+    console.log(`[TOGGLE] Menu updated successfully`);
+  } catch (err) {
+    console.error(`[TOGGLE] Error updating menu:`, err.message);
+  }
   await ctx.answerCbQuery(`${newLabel}`, false);
 }
 
 async function handleDeleteUsedDrafts(ctx, data) {
   const postId = parseInt(data.split(':')[1], 10);
   const userId = ctx.from.id;
+  console.log(`[DELETE] Deleting drafts for post ${postId}, user ${userId}`);
   const user = await getUser(userId);
 
   if (!user) {
+    console.log(`[DELETE] User not found`);
     await ctx.answerCbQuery('Пользователь не найден');
     return;
   }
 
   const post = await getPost(postId);
   if (!post || post.user_id !== user.id) {
+    console.log(`[DELETE] Post not found or not user's`);
     await ctx.answerCbQuery('Пост не найден или не ваш');
     return;
   }
 
   try {
-    await deleteDraftsByPostId(postId);
+    console.log(`[DELETE] Deleting drafts for post ${postId}...`);
+    // Delete drafts linked to this post
+    await query('DELETE FROM drafts WHERE post_id = $1', [postId]);
+    console.log(`[DELETE] Drafts deleted successfully`);
     await ctx.editMessageText('✅ Черновики удалены');
     await ctx.answerCbQuery('Черновики удалены', false);
   } catch (err) {
@@ -219,8 +236,9 @@ async function handleDeleteUsedDrafts(ctx, data) {
 }
 
 async function handleKeepUsedDrafts(ctx, data) {
+  console.log(`[KEEP] Saving drafts, data: ${data}`);
   await ctx.editMessageText('📁 Черновики сохранены');
-  await ctx.answerCbQuery('', false);
+  await ctx.answerCbQuery('Черновики не удалены', false);
 }
 
 async function handleSchedulePostCallback(ctx, data) {

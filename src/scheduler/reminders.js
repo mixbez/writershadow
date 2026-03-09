@@ -175,6 +175,7 @@ async function expireSubscriptions() {
 async function checkScheduledPosts() {
   try {
     const posts = await getDueScheduledPosts();
+    console.log(`[SCHEDULER] Checking scheduled posts: ${posts.length} due`);
     if (!posts.length) return;
 
     for (const post of posts) {

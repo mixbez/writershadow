@@ -8,7 +8,18 @@ export async function createDraftPost(userId, text, draftIds = []) {
      RETURNING *`,
     [userId, text, charCount]
   );
-  return result.rows[0];
+  const post = result.rows[0];
+
+  // Link drafts to this post
+  if (draftIds && draftIds.length > 0) {
+    const placeholders = draftIds.map((_, i) => `$${i + 2}`).join(',');
+    await query(
+      `UPDATE drafts SET post_id = $1 WHERE id IN (${placeholders})`,
+      [post.id, ...draftIds]
+    );
+  }
+
+  return post;
 }
 
 export async function publishPost(postId, channelMessageId) {

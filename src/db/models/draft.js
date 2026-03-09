@@ -66,7 +66,7 @@ export async function getUnusedDraftsByTag(userId, tag) {
   const result = await query(
     `SELECT * FROM drafts
      WHERE user_id = $1 AND is_used = FALSE
-     AND text ~* ('(^|\\s)## ' || $2 || '(\\s|$)')
+     AND text ~* ('##\\s*' || $2 || '(\\s|$)')
      ORDER BY created_at DESC`,
     [userId, tag]
   );
