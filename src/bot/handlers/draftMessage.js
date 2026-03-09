@@ -2,6 +2,11 @@ import { getUser, updateUser } from '../../db/models/user.js';
 import { createDraft } from '../../db/models/draft.js';
 import { upsertDailyStats } from '../../db/models/dailyStats.js';
 import { redis } from '../../redis/client.js';
+import { query } from '../../db/index.js';
+import { generateTags } from '../../ai/provider.js';
+import { appendTags } from '../../utils/tags.js';
+import { schedulePost } from '../../db/models/post.js';
+import { localDateToUTC, isValidDateTimeFormat } from '../../utils/timezone.js';
 
 // This handler is used in both private chat (for setup) and draft group (for tracking)
 export async function handleDraftMessage(ctx) {
@@ -24,6 +29,7 @@ async function handleSetupMessage(ctx, text) {
   const combineStep = ctx.session.combineStep;
   const aiSetupStep = ctx.session.aiSetupStep;
   const settingsStep = ctx.session.settingsStep;
+  const scheduleStep = ctx.session.scheduleStep;
 
   if (combineStep === 'selecting') {
     // Import here to avoid circular dependency
@@ -67,6 +73,16 @@ async function handleSetupMessage(ctx, text) {
       console.error('Settings error:', err);
       await ctx.reply('Ошибка при настройке: ' + err.message);
     }
+    return;
+  }
+
+  if (scheduleStep === 'date') {
+    await handleScheduleDate(ctx, text);
+    return;
+  }
+
+  if (scheduleStep === 'time') {
+    await handleScheduleTime(ctx, text);
     return;
   }
 
@@ -192,6 +208,52 @@ async function setupTimezone(ctx, userId, text) {
   await ctx.reply(`Настройки сохранены! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
 }
 
+async function handleScheduleDate(ctx, text) {
+  const dateRegex = /^\d{2}\.\d{2}\.\d{4}$/;
+  if (!dateRegex.test(text)) {
+    await ctx.reply('Формат: DD.MM.YYYY (например: 15.03.2026)');
+    return;
+  }
+
+  ctx.session.scheduleDateStr = text;
+  ctx.session.scheduleStep = 'time';
+  await ctx.reply('Введи время публикации (HH:MM):');
+}
+
+async function handleScheduleTime(ctx, text) {
+  const timeRegex = /^\d{2}:\d{2}$/;
+  if (!timeRegex.test(text)) {
+    await ctx.reply('Формат: HH:MM (например: 14:30)');
+    return;
+  }
+
+  const postId = ctx.session.schedulePostId;
+  const dateStr = ctx.session.scheduleDateStr;
+  const user = await getUser(ctx.from.id);
+
+  try {
+    const scheduledAt = localDateToUTC(dateStr, text, user.timezone);
+
+    // Check if time is in the past
+    if (scheduledAt < new Date()) {
+      await ctx.reply('Время в прошлом. Выбери будущую дату/время.');
+      return;
+    }
+
+    await schedulePost(postId, scheduledAt);
+
+    ctx.session.schedulePostId = null;
+    ctx.session.scheduleStep = null;
+    ctx.session.scheduleDateStr = null;
+
+    const displayDate = `${dateStr} ${text}`;
+    await ctx.reply(`✅ Пост запланирован на ${displayDate} (${user.timezone})`);
+  } catch (err) {
+    console.error('Schedule error:', err);
+    await ctx.reply('Ошибка при планировании: ' + err.message);
+  }
+}
+
 async function handleDraftInGroup(ctx, text) {
   const chatId = ctx.chat.id;
   const senderUserId = ctx.from.id;
@@ -205,7 +267,25 @@ async function handleDraftInGroup(ctx, text) {
   const charCount = text.length;
 
   // Save draft
-  await createDraft(user.id, ctx.message.message_id, chatId, text);
+  const draft = await createDraft(user.id, ctx.message.message_id, chatId, text);
+
+  // Generate tags if enabled (Features 3 & 4)
+  if (user.ai_tags_enabled && user.ai_provider !== 'none') {
+    try {
+      const tags = await generateTags(text, user);
+      if (tags && tags.length > 0) {
+        const taggedText = appendTags(text, tags);
+        // Update draft with tags
+        await query(
+          'UPDATE drafts SET text = $1, char_count = $2 WHERE id = $3',
+          [taggedText, taggedText.length, draft.id]
+        );
+      }
+    } catch (err) {
+      // Silently fail - draft already saved
+      console.error('Tag generation error:', err);
+    }
+  }
 
   // Update daily stats
   const today = new Date().toISOString().slice(0, 10);
