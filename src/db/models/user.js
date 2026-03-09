@@ -60,3 +60,11 @@ export async function getAllActiveUsers() {
   const result = await query('SELECT * FROM users WHERE is_active = TRUE');
   return result.rows;
 }
+
+export async function getUserByDraftGroupId(draftGroupId) {
+  const result = await query(
+    'SELECT * FROM users WHERE draft_group_id = $1 AND is_active = TRUE',
+    [draftGroupId]
+  );
+  return result.rows[0];
+}

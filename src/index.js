@@ -1,9 +1,22 @@
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import { bot } from './bot/index.js';
 import { startScheduler } from './scheduler/reminders.js';
 import { runMigrations } from './db/index.js';
+import {
+  getAnalyticsData,
+  getGlobalStats,
+  getCommandStats,
+  getDailyActiveUsers,
+  getRecentLogs,
+  getConversionFunnel,
+  getTopUsers
+} from './api/analytics.js';
 
 const server = Fastify({ logger: true });
+const __dir = dirname(fileURLToPath(import.meta.url));
 
 await runMigrations();
 startScheduler();
@@ -23,10 +36,13 @@ if (process.env.NODE_ENV === 'production') {
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
   await bot.telegram.setWebhook(process.env.BOT_WEBHOOK_URL);
   console.log('Webhook set:', process.env.BOT_WEBHOOK_URL);
+  console.log('Analytics available at: http://localhost:3001/analytics.html');
 } else {
+  await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
   await bot.launch();
   botStarted = true;
   console.log('Bot started in polling mode');
+  console.log('Analytics available at http://localhost:3001/analytics');
 }
 
 process.once('SIGINT', () => {

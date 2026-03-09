@@ -16,6 +16,8 @@ export async function handleCallbackQuery(ctx) {
       await handlePublishPost(ctx, data);
     } else if (data.startsWith('cancel_post:')) {
       await handleCancelPost(ctx, data);
+    } else if (data.startsWith('delete_draft:')) {
+      await handleDeleteDraft(ctx, data);
     } else if (data.startsWith('toggle_')) {
       await handleToggleSetting(ctx, data);
     } else if (data.startsWith('setai_')) {
@@ -45,6 +47,12 @@ export async function handleCallbackQuery(ctx) {
     console.error('Callback error:', err);
     await ctx.answerCbQuery('Ошибка при обработке действия');
   }
+}
+
+async function handleDeleteDraft(ctx, data) {
+  const draftId = parseInt(data.split(':')[1], 10);
+  const { handleDeleteDraftCallback } = await import('../commands/delete.js');
+  await handleDeleteDraftCallback(ctx, draftId);
 }
 
 async function handleSettingsCallback(ctx, data) {
@@ -152,15 +160,12 @@ async function handleToggleSetting(ctx, data) {
     return;
   }
 
-  // Toggle the setting
   let field = '';
-  let labelOn = '';
-  let labelOff = '';
+  let label = '';
 
   if (setting === 'evening_nudge') {
     field = 'evening_nudge_enabled';
-    labelOn = 'Вечерний пинок: Вкл';
-    labelOff = 'Вечерний пинок: Выкл';
+    label = 'Вечерний пинок';
   } else if (setting === 'weekly_summary') {
     field = 'weekly_summary_enabled';
     labelOn = 'Еженедельная сводка: Вкл';

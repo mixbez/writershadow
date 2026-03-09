@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   draft_group_id          BIGINT,
 
   -- Напоминания
-  reminder_time           TIME DEFAULT '09:00',
+  reminder_time           TIME DEFAULT '20:00',
   timezone                TEXT DEFAULT 'Europe/Moscow',
   reminder_enabled        BOOLEAN DEFAULT TRUE,
   evening_nudge_enabled   BOOLEAN DEFAULT FALSE,

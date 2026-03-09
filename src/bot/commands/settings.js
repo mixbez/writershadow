@@ -23,7 +23,6 @@ export async function settingsCommand(ctx) {
   const text = `⚙️ Настройки WriterShadow
 
 Канал: ${user.blog_channel_id || 'не настроен'}
-Группа черновиков: ${user.draft_group_id || 'не настроена'}
 
 ── Напоминания ──
 Ежедневное: ${user.reminder_time} ${user.timezone}
@@ -62,12 +61,14 @@ export async function handleSettingsCallback(ctx, action) {
   const userId = ctx.from.id;
 
   if (action === 'time') {
+    if (!ctx.session) ctx.session = {};
     ctx.session.settingsStep = 'time';
     await ctx.editMessageText('Введи время в формате HH:MM (например: 09:00)');
   } else if (action === 'reconfigure') {
+    if (!ctx.session) ctx.session = {};
     ctx.session.setupStep = 'channel';
     await ctx.editMessageText(
-      'Давай переделаем настройку.\n\n' +
+      'Давай переделаем настройку канала для публикаций.\n\n' +
       'Напиши @username канала или перешли любое сообщение из канала, где публикуешь посты.'
     );
   }
@@ -82,9 +83,10 @@ export async function handleSettingsTimeInput(ctx, text) {
     return;
   }
 
+  if (!ctx.session) ctx.session = {};
   ctx.session.pendingReminderTime = text;
   ctx.session.settingsStep = 'timezone';
-  await ctx.reply('Твой часовой пояс? (например: Europe/Moscow, или пришли геолокацию)');
+  await ctx.reply('В каком городе ты живёшь? (например: Budapest, Moscow, Berlin)');
 }
 
 export async function handleSettingsTimezoneInput(ctx, text) {
@@ -97,14 +99,15 @@ export async function handleSettingsTimezoneInput(ctx, text) {
     return;
   }
 
-  const timezone = text.trim() || 'Europe/Moscow';
+  const { resolveTimezoneFromText } = await import('../../utils/timezone.js');
+  const timezone = resolveTimezoneFromText(text);
+  if (!timezone) {
+    await ctx.reply('Не могу найти город. Попробуй написать на английском (Budapest, Moscow, Berlin).');
+    return;
+  }
 
-  await updateUser(userId, {
-    reminder_time: reminderTime,
-    timezone,
-  });
-
+  await updateUser(userId, { reminder_time: reminderTime, timezone });
   ctx.session.settingsStep = null;
   ctx.session.pendingReminderTime = null;
-  await ctx.reply(`Настройки сохранены! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
+  await ctx.reply(`✅ Сохранено! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
 }

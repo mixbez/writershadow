@@ -55,7 +55,8 @@ export async function draftsCommand(ctx) {
   });
 
   draftsList += `Итого: ${drafts.length} черновиков · ${totalChars} знаков\n`;
-  draftsList += 'Собери пост: /combine';
+  draftsList += 'Собери пост: /combine\n';
+  draftsList += 'Удалить черновик: /delete';
 
   await ctx.reply(draftsList);
 }
