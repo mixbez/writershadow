@@ -2,9 +2,12 @@ import cron from 'node-cron';
 import { bot } from '../bot/index.js';
 import { query } from '../db/index.js';
 import { getTodayStats, getStatsForPeriod } from '../db/models/dailyStats.js';
+import { upsertDailyStats } from '../db/models/dailyStats.js';
 import { redis } from '../redis/client.js';
-import { generateSuggestion } from '../ai/provider.js';
-import { getRecentPublishedPosts } from '../db/models/post.js';
+import { getDueScheduledPosts, publishPost } from '../db/models/post.js';
+import { markDraftsAsUsed } from '../db/models/draft.js';
+import { splitText } from '../utils/splitText.js';
+import { stripTags } from '../utils/tags.js';
 
 export function startScheduler() {
   // Every 5 minutes: daily reminders + evening nudge
@@ -15,6 +18,9 @@ export function startScheduler() {
 
   // Every hour: check for expired subscriptions
   cron.schedule('0 * * * *', () => expireSubscriptions());
+
+  // Every minute: check for scheduled posts
+  cron.schedule('* * * * *', () => checkScheduledPosts());
 
   console.log('Scheduler started');
 }
@@ -48,7 +54,7 @@ async function checkReminders() {
     const { rows: users } = await query(`
       SELECT * FROM users
       WHERE is_active = TRUE AND reminder_enabled = TRUE
-      AND blog_channel_id IS NOT NULL AND draft_group_id IS NOT NULL
+      AND blog_channel_id IS NOT NULL
     `);
 
     console.log(`[Reminder] Found ${users.length} user(s) with reminders enabled`);
@@ -205,5 +211,90 @@ async function expireSubscriptions() {
     `);
   } catch (err) {
     console.error('Subscription expiry check error:', err);
+  }
+}
+
+async function checkScheduledPosts() {
+  try {
+    const posts = await getDueScheduledPosts();
+    console.log(`[SCHEDULER] Checking scheduled posts: ${posts.length} due`);
+    if (!posts.length) return;
+
+    for (const post of posts) {
+      try {
+        const user = await query(
+          'SELECT * FROM users WHERE id = $1',
+          [post.user_id]
+        );
+        const userRow = user.rows[0];
+
+        if (!userRow || !userRow.blog_channel_id) {
+          continue;
+        }
+
+        // Strip tags and split text
+        const cleanedText = stripTags(post.text);
+        const chunks = splitText(cleanedText);
+
+        // Send all chunks to channel
+        let channelMessageId = null;
+        for (const chunk of chunks) {
+          try {
+            const messageResult = await bot.telegram.sendMessage(
+              userRow.blog_channel_id,
+              chunk
+            );
+            if (channelMessageId === null) {
+              channelMessageId = messageResult.message_id;
+            }
+          } catch (err) {
+            console.error(
+              `Failed to send scheduled post chunk to ${userRow.blog_channel_id}:`,
+              err.message
+            );
+            throw err; // Re-throw to prevent marking as published
+          }
+        }
+
+        // Mark as published
+        await publishPost(post.id, channelMessageId);
+
+        // Get and mark drafts as used
+        const draftResult = await query(
+          'SELECT id FROM drafts WHERE post_id = $1',
+          [post.id]
+        );
+        const draftIds = draftResult.rows.map(r => r.id);
+        if (draftIds.length > 0) {
+          await markDraftsAsUsed(draftIds, post.id);
+        }
+
+        // Update daily stats
+        const today = new Date().toISOString().slice(0, 10);
+        await upsertDailyStats(userRow.id, today, {
+          posts_published: 1,
+        });
+
+        // Notify user
+        try {
+          await bot.telegram.sendMessage(
+            userRow.telegram_user_id,
+            `✅ Запланированный пост опубликован!`
+          );
+        } catch (err) {
+          console.error(
+            `Failed to notify user ${userRow.telegram_user_id}:`,
+            err.message
+          );
+        }
+      } catch (err) {
+        console.error(
+          `Error publishing scheduled post ${post.id}:`,
+          err.message
+        );
+      }
+    }
+  } catch (err) {
+    console.error('Scheduled posts check error:', err);
   }
 }

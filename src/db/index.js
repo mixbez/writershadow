@@ -10,8 +10,9 @@ export async function runMigrations() {
   const __dir = dirname(fileURLToPath(import.meta.url));
   const migrationsDir = join(__dir, 'migrations');
   const files = readdirSync(migrationsDir)
-    .filter((f) => f.endsWith('.sql'))
+    .filter(f => f.endsWith('.sql'))
     .sort();
+
   for (const file of files) {
     const sql = readFileSync(join(migrationsDir, file), 'utf8');
     await pool.query(sql);

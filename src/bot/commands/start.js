@@ -4,32 +4,31 @@ export async function startCommand(ctx) {
   const userId = ctx.from.id;
   const username = ctx.from.username;
 
-  // Create or get user
-  await createOrGetUser(userId, username);
+  console.log(`[START] User ${userId} (${username}) called /start`);
 
-  // Check if already setup
-  const setup = await isUserSetup(userId);
-  if (setup) {
-    await ctx.reply('Ты уже настроен. Используй /settings для изменений.');
-    return;
+  try {
+    // Create or get user
+    await createOrGetUser(userId, username);
+    console.log(`[START] User created/got for ${userId}`);
+
+    // Check if already setup
+    const setup = await isUserSetup(userId);
+    if (setup) {
+      console.log(`[START] User ${userId} already setup`);
+      await ctx.reply('Ты уже настроен. Используй /settings для изменений.');
+      return;
+    }
+
+    // Initialize setup session
+    ctx.session.setupStep = 'channel';
+    console.log(`[START] Starting setup for user ${userId}`);
+    await ctx.reply(
+      'Привет! Я WriterShadow — помогаю писать регулярно.\n\n' +
+      'Напиши @username канала или перешли сообщение из канала, где публикуешь посты.'
+    );
+    console.log(`[START] Reply sent to user ${userId}`);
+  } catch (err) {
+    console.error(`[START] Error for user ${userId}:`, err.message);
+    await ctx.reply('Ошибка при инициализации. Попробуй позже.');
   }
-
-  // Reset session and initialize setup
-  if (!ctx.session) ctx.session = {};
-  ctx.session.setupStep = 'channel';
-  ctx.session.combineStep = null;
-  ctx.session.aiSetupStep = null;
-  ctx.session.settingsStep = null;
-  ctx.session.pendingNewDraft = false;
-  ctx.session.pendingReminderTime = null;
-
-  await ctx.reply(
-    'Привет! Я WriterShadow — помогаю писать регулярно. Давай настроим.\n\n' +
-    '1️⃣ Добавь меня как администратора в канал, где публикуешь посты (нужно право «Публикация сообщений»).\n\n' +
-    'Затем напиши @username этого канала или перешли из него любое сообщение.\n\n' +
-    'По умолчанию:\n' +
-    '• Ежедневное напоминание: 09:00 (Europe/Moscow)\n' +
-    '• Вечерний пинок: включен\n' +
-    '• Еженедельная сводка: включена'
-  );
 }

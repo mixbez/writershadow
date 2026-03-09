@@ -39,12 +39,12 @@ export async function handleSetAiProvider(ctx, provider) {
       ai_provider: 'none',
       ai_key_encrypted: null,
     });
-    await ctx.editMessageText('AI-ассистент отключён.');
+    await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined, 'AI-ассистент отключён.');
     return;
   }
 
   if (provider === 'paid') {
-    await ctx.editMessageText('Подписка WriterShadow Pro', {
+    await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined, 'Подписка WriterShadow Pro', {
       reply_markup: {
         inline_keyboard: [
           [{ text: 'Перейти к подписке', callback_data: 'subscribe' }],
@@ -55,7 +55,7 @@ export async function handleSetAiProvider(ctx, provider) {
   }
 
   if (provider === 'groq') {
-    await ctx.editMessageText(
+    await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined,
       'Groq предоставляет бесплатный API для языковых моделей.\n\n' +
       '1. Зайди на console.groq.com/keys\n' +
       '2. Создай API key\n' +
@@ -68,7 +68,7 @@ export async function handleSetAiProvider(ctx, provider) {
   }
 
   if (provider === 'anthropic') {
-    await ctx.editMessageText(
+    await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined,
       'Anthropic — создатель Claude. Ключ на console.anthropic.com\n\n' +
       '1. Зайди на console.anthropic.com\n' +
       '2. Создай API key в разделе API Keys\n' +

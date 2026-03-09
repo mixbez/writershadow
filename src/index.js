@@ -21,114 +21,16 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 await runMigrations();
 startScheduler();
 
-// Register static file serving for public directory
-server.register(fastifyStatic, {
-  root: join(__dir, '..', 'public'),
-  prefix: '/',
-});
-
-// Analytics API endpoints
-server.get('/api/analytics', async (req, reply) => {
-  try {
-    const { from, to } = req.query;
-
-    if (!from || !to) {
-      return reply.status(400).send({ error: 'Missing from or to date' });
-    }
-
-    const users = await getAnalyticsData(from, to);
-    const global = await getGlobalStats(from, to);
-
-    return { global, users };
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-server.get('/api/analytics/commands', async (req, reply) => {
-  try {
-    const { from, to } = req.query;
-
-    if (!from || !to) {
-      return reply.status(400).send({ error: 'Missing from or to date' });
-    }
-
-    const commands = await getCommandStats(from, to);
-    return { commands };
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-server.get('/api/analytics/timeline', async (req, reply) => {
-  try {
-    const { from, to } = req.query;
-
-    if (!from || !to) {
-      return reply.status(400).send({ error: 'Missing from or to date' });
-    }
-
-    const timeline = await getDailyActiveUsers(from, to);
-    return { timeline };
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-server.get('/api/analytics/recent', async (req, reply) => {
-  try {
-    const { limit = 100 } = req.query;
-    const recent = await getRecentLogs(parseInt(limit, 10));
-    return { recent };
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-server.get('/api/analytics/funnel', async (req, reply) => {
-  try {
-    const { from, to } = req.query;
-
-    if (!from || !to) {
-      return reply.status(400).send({ error: 'Missing from or to date' });
-    }
-
-    const funnel = await getConversionFunnel(from, to);
-    return funnel;
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-server.get('/api/analytics/top-users', async (req, reply) => {
-  try {
-    const { from, to, limit = 20 } = req.query;
-
-    if (!from || !to) {
-      return reply.status(400).send({ error: 'Missing from or to date' });
-    }
-
-    const users = await getTopUsers(from, to, parseInt(limit, 10));
-    return { users };
-  } catch (error) {
-    server.log.error(error);
-    return reply.status(500).send({ error: error.message });
-  }
-});
-
-// Health check endpoint
-server.get('/health', async (req, reply) => {
-  return { status: 'ok' };
-});
+let botStarted = false;
 
 if (process.env.NODE_ENV === 'production') {
   server.post('/ws-webhook', async (req, reply) => {
-    await bot.handleUpdate(req.body);
+    console.log(`[WEBHOOK] Received update:`, JSON.stringify(req.body).substring(0, 200));
+    try {
+      await bot.handleUpdate(req.body);
+    } catch (err) {
+      console.error(`[WEBHOOK] Error:`, err);
+    }
     return { ok: true };
   });
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
@@ -138,9 +40,14 @@ if (process.env.NODE_ENV === 'production') {
 } else {
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });
   await bot.launch();
+  botStarted = true;
   console.log('Bot started in polling mode');
   console.log('Analytics available at http://localhost:3001/analytics');
 }
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  if (botStarted) bot.stop('SIGINT');
+});
+process.once('SIGTERM', () => {
+  if (botStarted) bot.stop('SIGTERM');
+});
