@@ -94,6 +94,18 @@ async function handleSetupMessage(ctx, text) {
     return;
   }
 
+  if (ctx.session.pendingNewDraft) {
+    const { saveDraftFromNewCommand } = await import('../commands/newDraft.js');
+    try {
+      await saveDraftFromNewCommand(ctx, text);
+    } catch (err) {
+      console.error('New draft error:', err);
+      await ctx.reply('Ошибка при создании черновика: ' + err.message);
+    }
+    ctx.session.pendingNewDraft = null;
+    return;
+  }
+
   if (!setupStep) return; // No setup in progress
 
   try {
