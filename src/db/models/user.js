@@ -68,3 +68,11 @@ export async function getUserByDraftGroupId(draftGroupId) {
   );
   return result.rows[0];
 }
+
+export function isProUser(user) {
+  if (!user) return false;
+  // Pro if subscription is active OR demo hasn't expired
+  const isPro = user.subscription_status === 'active' ||
+    (user.demo_expires_at && new Date(user.demo_expires_at) > new Date());
+  return isPro;
+}

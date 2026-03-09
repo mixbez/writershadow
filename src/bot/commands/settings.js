@@ -1,4 +1,4 @@
-import { getUser, isUserSetup, updateUser } from '../../db/models/user.js';
+import { getUser, isUserSetup, updateUser, isProUser } from '../../db/models/user.js';
 
 export async function settingsCommand(ctx) {
   const userId = ctx.from.id;
@@ -33,6 +33,7 @@ export async function settingsCommand(ctx) {
 AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
 Связки между черновиками: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`;
 
+  const isPro = isProUser(user);
   const buttons = [
     [{ text: 'Изменить время напоминания', callback_data: 'settings_time' }],
     [
@@ -41,14 +42,22 @@ AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
     [
       { text: `Еженедельная сводка: ${user.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_weekly_summary' },
     ],
-    [
-      { text: `AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' },
-    ],
-    [
-      { text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' },
-    ],
-    [{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }],
   ];
+
+  // Only show AI-теги and Связки if user has Pro (paid or active demo)
+  if (isPro) {
+    buttons.push(
+      [{ text: `AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' }],
+      [{ text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' }]
+    );
+  } else {
+    buttons.push(
+      [{ text: 'AI-теги: (недоступно - только Pro)', callback_data: 'none' }],
+      [{ text: 'Связки: (недоступно - только Pro)', callback_data: 'none' }]
+    );
+  }
+
+  buttons.push([{ text: 'Изменить канал', callback_data: 'settings_reconfigure' }]);
 
   await ctx.reply(text, {
     reply_markup: {
