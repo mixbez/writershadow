@@ -205,7 +205,7 @@ async function expireSubscriptions() {
   try {
     await query(`
       UPDATE users
-      SET subscription_status = 'expired', ai_provider = 'none'
+      SET subscription_status = 'expired', ai_provider = 'groq'
       WHERE subscription_status = 'active'
       AND subscription_expires_at < NOW()
     `);

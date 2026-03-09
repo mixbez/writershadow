@@ -102,7 +102,7 @@ async function revokeSubscription(ctx, args) {
   await query(
     `UPDATE users
      SET subscription_status = 'inactive',
-         ai_provider = 'none'
+         ai_provider = 'groq'
      WHERE id = $1`,
     [user.id]
   );
