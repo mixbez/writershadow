@@ -10,7 +10,12 @@ import { localDateToUTC, isValidDateTimeFormat } from '../../utils/timezone.js';
 
 // This handler is used in both private chat (for setup) and draft group (for tracking)
 export async function handleDraftMessage(ctx) {
-  // Skip if no text
+  // Handle document uploads in private chat (JSON export import)
+  if (ctx.chat.type === 'private' && ctx.message.document) {
+    const { handleJsonImport } = await import('./importHandler.js');
+    return handleJsonImport(ctx);
+  }
+
   const text = ctx.message.text || ctx.message.caption || '';
   if (!text) return;
 
@@ -33,6 +38,7 @@ export async function handleDraftMessage(ctx) {
 
 async function handleSetupMessage(ctx, text) {
   const userId = ctx.from.id;
+  if (!ctx.session) ctx.session = {};
   const setupStep = ctx.session.setupStep;
   const combineStep = ctx.session.combineStep;
   const aiSetupStep = ctx.session.aiSetupStep;
@@ -136,10 +142,19 @@ async function setupChannel(ctx, userId, text) {
     return;
   }
 
+  // Resolve @username to numeric ID
+  try {
+    const chat = await ctx.telegram.getChat(channelId);
+    channelId = chat.id;
+  } catch (err) {
+    await ctx.reply('Не могу найти канал. Убедись, что username верный и бот добавлен в канал.');
+    return;
+  }
+
   // Check if bot is admin in channel
   try {
     const member = await ctx.telegram.getChatMember(channelId, ctx.botInfo.id);
-    if (!member || !member.is_administrator) {
+    if (!member || (member.status !== 'administrator' && member.status !== 'creator')) {
       await ctx.reply(
         'Добавь меня как администратора в канал (нужно право "Публикация сообщений"), затем повтори.'
       );
@@ -185,8 +200,9 @@ async function setupGroup(ctx, userId, text) {
   await updateUser(userId, { draft_group_id: groupId });
   ctx.session.setupStep = null;
   await ctx.reply(
-    'Готово! Настройки сохранены.\n\n' +
-    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow).\n' +
+    '✅ Всё готово! Настройки сохранены.\n\n' +
+    'Начни писать черновики через /new или писать в личный чат.\n\n' +
+    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow)\n\n' +
     'Поменять время и другие настройки: /settings\n' +
     'Настроить AI-ассистента: /setai'
   );
@@ -199,12 +215,14 @@ async function setupReminderTime(ctx, userId, text) {
     return;
   }
 
+  if (!ctx.session) ctx.session = {};
   ctx.session.pendingReminderTime = text;
   ctx.session.settingsStep = 'timezone';
-  await ctx.reply('Твой часовой пояс? (например: Europe/Moscow, или пришли геолокацию)');
+  await ctx.reply('В каком городе ты живёшь? (например: Budapest, Moscow, Berlin)');
 }
 
 async function setupTimezone(ctx, userId, text) {
+  if (!ctx.session) ctx.session = {};
   const reminderTime = ctx.session.pendingReminderTime;
 
   if (!reminderTime) {
@@ -213,17 +231,17 @@ async function setupTimezone(ctx, userId, text) {
     return;
   }
 
-  // For now, just accept timezone as text (validation can be improved)
-  const timezone = text.trim() || 'Europe/Moscow';
+  const { resolveTimezoneFromText } = await import('../../utils/timezone.js');
+  const timezone = resolveTimezoneFromText(text);
+  if (!timezone) {
+    await ctx.reply('Не могу найти город. Попробуй написать на английском (Budapest, Moscow, Berlin).');
+    return;
+  }
 
-  await updateUser(userId, {
-    reminder_time: reminderTime,
-    timezone,
-  });
-
+  await updateUser(userId, { reminder_time: reminderTime, timezone });
   ctx.session.settingsStep = null;
   ctx.session.pendingReminderTime = null;
-  await ctx.reply(`Настройки сохранены! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
+  await ctx.reply(`✅ Сохранено! Напоминание: каждый день в ${reminderTime} (${timezone}).`);
 }
 
 async function handleScheduleDate(ctx, text) {

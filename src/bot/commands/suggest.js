@@ -39,10 +39,8 @@ export async function suggestCommand(ctx) {
   const statusMsg = await ctx.reply('⏳ Анализирую твои тексты...');
 
   try {
-    // Get recent published posts
     const posts = await getRecentPublishedPosts(user.id, 15);
 
-    // Check minimum
     if (posts.length < 3) {
       await ctx.telegram.editMessageText(
         userId,
