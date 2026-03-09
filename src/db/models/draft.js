@@ -61,3 +61,22 @@ export async function getDraftCount(userId, since = null) {
   const result = await query(sql, params);
   return parseInt(result.rows[0].count, 10);
 }
+
+export async function getUnusedDraftsByTag(userId, tag) {
+  const result = await query(
+    `SELECT * FROM drafts
+     WHERE user_id = $1 AND is_used = FALSE
+     AND text ~* ('(^|\\s)## ' || $2 || '(\\s|$)')
+     ORDER BY created_at DESC`,
+    [userId, tag]
+  );
+  return result.rows;
+}
+
+export async function deleteDraft(draftId) {
+  await query('DELETE FROM drafts WHERE id = $1', [draftId]);
+}
+
+export async function deleteDraftsByPostId(postId) {
+  await query('DELETE FROM drafts WHERE post_id = $1 AND is_used = TRUE', [postId]);
+}

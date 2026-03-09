@@ -67,3 +67,33 @@ export async function getPostsByUserId(userId, status = null) {
 export async function deletePost(postId) {
   await query('DELETE FROM posts WHERE id = $1', [postId]);
 }
+
+export async function schedulePost(postId, scheduledAt) {
+  const result = await query(
+    `UPDATE posts
+     SET status = 'scheduled', scheduled_at = $2
+     WHERE id = $1
+     RETURNING *`,
+    [postId, scheduledAt]
+  );
+  return result.rows[0];
+}
+
+export async function getDueScheduledPosts() {
+  const result = await query(
+    `SELECT * FROM posts
+     WHERE status = 'scheduled' AND scheduled_at <= NOW()
+     ORDER BY scheduled_at ASC`
+  );
+  return result.rows;
+}
+
+export async function getScheduledPostsByUser(userId) {
+  const result = await query(
+    `SELECT * FROM posts
+     WHERE user_id = $1 AND status = 'scheduled'
+     ORDER BY scheduled_at ASC`,
+    [userId]
+  );
+  return result.rows;
+}
