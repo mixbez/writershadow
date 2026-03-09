@@ -39,7 +39,9 @@ export async function handleCallbackQuery(ctx) {
       const { handleCancelDeleteAll } = await import('../commands/delete.js');
       await handleCancelDeleteAll(ctx);
     } else if (data === 'subscribe') {
-      // Will be handled by subscribeCommand callback
+      const { subscribeCommand } = await import('../commands/subscribe.js');
+      await subscribeCommand(ctx);
+      await ctx.answerCbQuery();
     }
   } catch (err) {
     console.error('Callback error:', err);

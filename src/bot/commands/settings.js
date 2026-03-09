@@ -57,7 +57,7 @@ AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
     );
   }
 
-  buttons.push([{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }]);
+  buttons.push([{ text: 'Изменить канал', callback_data: 'settings_reconfigure' }]);
 
   await ctx.reply(text, {
     reply_markup: {
