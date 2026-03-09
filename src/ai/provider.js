@@ -5,15 +5,15 @@ import { decryptKey } from '../crypto/keys.js';
 export async function generateSuggestion(posts, user) {
   switch (user.ai_provider) {
     case 'groq': {
-      const apiKey = decryptKey(user.ai_key_encrypted);
-      return generateWithGroq(posts, apiKey);
+      // Use shared public Groq key from environment
+      return generateWithGroq(posts, process.env.GROQ_API_KEY);
     }
     case 'anthropic': {
       const apiKey = decryptKey(user.ai_key_encrypted);
       return generateWithAnthropic(posts, apiKey);
     }
     case 'paid': {
-      // Используем ключ владельца + защита от инъекций
+      // Use owner's key for paid Pro users
       return generateWithAnthropic(posts, process.env.ANTHROPIC_API_KEY, { safe: true });
     }
     default:
@@ -24,8 +24,8 @@ export async function generateSuggestion(posts, user) {
 export async function generateTags(draftText, user) {
   switch (user.ai_provider) {
     case 'groq': {
-      const apiKey = decryptKey(user.ai_key_encrypted);
-      return generateTagsWithGroq(draftText, apiKey);
+      // Use shared public Groq key from environment
+      return generateTagsWithGroq(draftText, process.env.GROQ_API_KEY);
     }
     case 'anthropic': {
       const apiKey = decryptKey(user.ai_key_encrypted);
@@ -42,8 +42,8 @@ export async function generateTags(draftText, user) {
 export async function generateBridge(text1, text2, user) {
   switch (user.ai_provider) {
     case 'groq': {
-      const apiKey = decryptKey(user.ai_key_encrypted);
-      return generateBridgeWithGroq(text1, text2, apiKey);
+      // Use shared public Groq key from environment
+      return generateBridgeWithGroq(text1, text2, process.env.GROQ_API_KEY);
     }
     case 'anthropic': {
       const apiKey = decryptKey(user.ai_key_encrypted);

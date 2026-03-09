@@ -60,3 +60,11 @@ export async function getAllActiveUsers() {
   const result = await query('SELECT * FROM users WHERE is_active = TRUE');
   return result.rows;
 }
+
+export function isProUser(user) {
+  if (!user) return false;
+  // Pro if subscription is active OR demo hasn't expired
+  const isPro = user.subscription_status === 'active' ||
+    (user.demo_expires_at && new Date(user.demo_expires_at) > new Date());
+  return isPro;
+}

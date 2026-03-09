@@ -1,4 +1,4 @@
-import { getUser, isUserSetup } from '../../db/models/user.js';
+import { getUser, isUserSetup, isProUser } from '../../db/models/user.js';
 import { createDraft } from '../../db/models/draft.js';
 import { upsertDailyStats } from '../../db/models/dailyStats.js';
 import { query } from '../../db/index.js';
@@ -36,8 +36,8 @@ async function saveDraft(userId, text) {
   const user = await getUser(userId);
   const draft = await createDraft(user.id, null, null, text);
 
-  // Generate tags if enabled (Features 3 & 4)
-  if (user.ai_tags_enabled && user.ai_provider !== 'none') {
+  // Generate tags if enabled and user has Pro access (Features 3 & 4)
+  if (isProUser(user) && user.ai_tags_enabled && user.ai_provider !== 'none') {
     try {
       const tags = await generateTags(text, user);
       if (tags && tags.length > 0) {

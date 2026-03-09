@@ -13,19 +13,21 @@ export async function setaiCommand(ctx) {
   const user = await getUser(userId);
   const currentProvider = user?.ai_provider || 'не настроен';
 
+  const isProActive = user?.subscription_status === 'active' ||
+                      (user?.demo_expires_at && new Date(user.demo_expires_at) > new Date());
+
   const text = `🤖 AI-ассистент
 
 Текущий провайдер: ${currentProvider}
+${isProActive ? '✅ Pro режим включен (Claude)' : '📌 Базовый режим (Groq)'}
 
 Выбери режим:`;
 
   await ctx.reply(text, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: 'Groq — бесплатно', callback_data: 'setai_groq' }],
-        [{ text: 'Anthropic — свой ключ', callback_data: 'setai_anthropic' }],
-        [{ text: 'WriterShadow Pro — 9€/мес', callback_data: 'setai_paid' }],
-        [{ text: 'Отключить AI', callback_data: 'setai_none' }],
+        [{ text: 'Groq — всегда бесплатно', callback_data: 'setai_groq' }],
+        [{ text: 'WriterShadow Pro — 9€/мес (Claude)', callback_data: 'setai_paid' }],
       ],
     },
   });
@@ -55,67 +57,23 @@ export async function handleSetAiProvider(ctx, provider) {
   }
 
   if (provider === 'groq') {
+    // Groq uses public key - no need to enter anything
+    await updateUser(userId, {
+      ai_provider: 'groq',
+      ai_key_encrypted: null,
+    });
     await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined,
-      'Groq предоставляет бесплатный API для языковых моделей.\n\n' +
-      '1. Зайди на console.groq.com/keys\n' +
-      '2. Создай API key\n' +
-      '3. Пришли его сюда:'
+      '✅ Groq активирован!\n\nТы получаешь бесплатный доступ к AI (Groq).\n\nДоступные функции:\n• AI-теги для постов\n• Связки между черновиками\n• Рекомендации для постов (в Pro)'
     );
-    ctx.session.aiSetupProvider = 'groq';
-    ctx.session.aiSetupStep = 'key';
-    return;
-  }
-
-  if (provider === 'anthropic') {
-    await ctx.telegram.editMessageText(userId, ctx.callbackQuery.message.message_id, undefined,
-      'Anthropic — создатель Claude. Ключ на console.anthropic.com\n\n' +
-      '1. Зайди на console.anthropic.com\n' +
-      '2. Создай API key в разделе API Keys\n' +
-      '3. Пришли его сюда:'
-    );
-    ctx.session.aiSetupProvider = 'anthropic';
-    ctx.session.aiSetupStep = 'key';
+    ctx.session.aiSetupProvider = null;
+    ctx.session.aiSetupStep = null;
     return;
   }
 }
 
 export async function handleAiKeyInput(ctx, text) {
-  const userId = ctx.from.id;
-  const provider = ctx.session.aiSetupProvider;
-
-  if (!provider) {
-    await ctx.reply('Сначала выбери провайдер через /setai');
-    return;
-  }
-
-  // Validate key format
-  let isValid = false;
-  if (provider === 'groq' && text.startsWith('gsk_')) {
-    isValid = true;
-  } else if (provider === 'anthropic' && text.startsWith('sk-ant-')) {
-    isValid = true;
-  }
-
-  if (!isValid) {
-    await ctx.reply(`Ключ ${provider} должен начинаться с ${provider === 'groq' ? 'gsk_' : 'sk-ant-'}`);
-    return;
-  }
-
-  // Encrypt and store
-  const encrypted = encryptKey(text);
-  await updateUser(userId, {
-    ai_provider: provider,
-    ai_key_encrypted: encrypted,
-  });
-
-  // Delete the message with the key for security
-  try {
-    await ctx.deleteMessage(ctx.message.message_id);
-  } catch (err) {
-    // Ignore if can't delete
-  }
-
+  // Keys are no longer accepted - all users get public Groq key
+  await ctx.reply('Пользовательские ключи больше не принимаются.\n\nТеперь все используют общий Groq (бесплатно) или переходят на WriterShadow Pro с Claude.\n\nПиши /setai для выбора режима.');
   ctx.session.aiSetupProvider = null;
   ctx.session.aiSetupStep = null;
-  await ctx.reply(`Готово! Теперь /suggest будет использовать ${provider === 'groq' ? 'Groq (бесплатно)' : 'Anthropic'}.`);
 }

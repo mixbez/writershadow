@@ -11,6 +11,7 @@ import { postCommand } from './commands/post.js';
 import { suggestCommand } from './commands/suggest.js';
 import { infoCommand } from './commands/info.js';
 import { deleteCommand } from './commands/delete.js';
+import { announceCommand } from './commands/announce.js';
 import { adminCommand } from './commands/admin.js';
 import { handleDraftMessage } from './handlers/draftMessage.js';
 import { handleCallbackQuery } from './handlers/callbackQuery.js';
@@ -46,6 +47,7 @@ bot.command('post', postCommand);
 bot.command('suggest', suggestCommand);
 bot.command('info', infoCommand);
 bot.command('delete', deleteCommand);
+bot.command('announce', announceCommand);
 bot.command('admin', adminCommand);
 
 // Set bot commands menu

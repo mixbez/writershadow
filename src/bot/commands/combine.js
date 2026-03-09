@@ -1,4 +1,4 @@
-import { getUser, isUserSetup } from '../../db/models/user.js';
+import { getUser, isUserSetup, isProUser } from '../../db/models/user.js';
 import { getUnusedDrafts, getDraftsByIds } from '../../db/models/draft.js';
 import { createDraftPost } from '../../db/models/post.js';
 import { redis } from '../../redis/client.js';
@@ -78,7 +78,7 @@ export async function handleCombineSelection(ctx, text) {
   let postText = '';
   if (selectedDrafts.length === 1) {
     postText = selectedDrafts[0].text;
-  } else if (user.bridge_enabled && user.ai_provider !== 'none') {
+  } else if (isProUser(user) && user.bridge_enabled && user.ai_provider !== 'none') {
     // Generate bridges between drafts
     const parts = [];
     for (let i = 0; i < selectedDrafts.length; i++) {

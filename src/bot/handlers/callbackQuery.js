@@ -1,4 +1,4 @@
-import { getUser } from '../../db/models/user.js';
+import { getUser, isProUser } from '../../db/models/user.js';
 import { getPost, publishPost } from '../../db/models/post.js';
 import { markDraftsAsUsed, getDraftsByIds, deleteDraftsByPostId } from '../../db/models/draft.js';
 import { upsertDailyStats } from '../../db/models/dailyStats.js';
@@ -152,6 +152,12 @@ async function handleToggleSetting(ctx, data) {
     return;
   }
 
+  // Check Pro status for Pro-only settings
+  if ((setting === 'ai_tags' || setting === 'bridge') && !isProUser(user)) {
+    await ctx.answerCbQuery('Эта функция доступна только для WriterShadow Pro');
+    return;
+  }
+
   // Toggle the setting
   let field = '';
   let labelOn = '';
@@ -185,6 +191,7 @@ async function handleToggleSetting(ctx, data) {
   const updatedUser = result.rows[0];
 
   // Rebuild full settings menu with updated values
+  const isPro = isProUser(updatedUser);
   const buttons = [
     [{ text: 'Изменить время напоминания', callback_data: 'settings_time' }],
     [
@@ -193,14 +200,22 @@ async function handleToggleSetting(ctx, data) {
     [
       { text: `Еженедельная сводка: ${updatedUser.weekly_summary_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_weekly_summary' },
     ],
-    [
-      { text: `AI-теги: ${updatedUser.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' },
-    ],
-    [
-      { text: `Связки: ${updatedUser.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' },
-    ],
-    [{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }],
   ];
+
+  // Only show AI-теги and Связки if user has Pro
+  if (isPro) {
+    buttons.push(
+      [{ text: `AI-теги: ${updatedUser.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' }],
+      [{ text: `Связки: ${updatedUser.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' }]
+    );
+  } else {
+    buttons.push(
+      [{ text: 'AI-теги: (недоступно - только Pro)', callback_data: 'none' }],
+      [{ text: 'Связки: (недоступно - только Pro)', callback_data: 'none' }]
+    );
+  }
+
+  buttons.push([{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }]);
 
   const newLabel = updatedUser[field] ? labelOn : labelOff;
   console.log(`[TOGGLE] Updated ${field} to ${newLabel}, editing menu...`);
