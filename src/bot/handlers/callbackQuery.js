@@ -28,6 +28,16 @@ export async function handleCallbackQuery(ctx) {
       await handleKeepUsedDrafts(ctx, data);
     } else if (data.startsWith('schedule_post:')) {
       await handleSchedulePostCallback(ctx, data);
+    } else if (data.startsWith('delete_draft:')) {
+      const draftId = parseInt(data.split(':')[1], 10);
+      const { handleDeleteDraftCallback } = await import('../commands/delete.js');
+      await handleDeleteDraftCallback(ctx, draftId);
+    } else if (data === 'confirm_delete_all') {
+      const { handleConfirmDeleteAll } = await import('../commands/delete.js');
+      await handleConfirmDeleteAll(ctx);
+    } else if (data === 'cancel_delete_all') {
+      const { handleCancelDeleteAll } = await import('../commands/delete.js');
+      await handleCancelDeleteAll(ctx);
     } else if (data === 'subscribe') {
       // Will be handled by subscribeCommand callback
     }
