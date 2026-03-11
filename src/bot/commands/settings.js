@@ -45,18 +45,10 @@ AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
     ],
   ];
 
-  // Only show AI-теги and Связки if user has Pro (paid or active demo)
-  if (isPro) {
-    buttons.push(
-      [{ text: `AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' }],
-      [{ text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' }]
-    );
-  } else {
-    buttons.push(
-      [{ text: 'AI-теги: (недоступно - только Pro)', callback_data: 'none' }],
-      [{ text: 'Связки: (недоступно - только Pro)', callback_data: 'none' }]
-    );
-  }
+  buttons.push(
+    [{ text: `AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_ai_tags' }],
+    [{ text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' }]
+  );
 
   buttons.push([{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }]);
 

@@ -1,4 +1,5 @@
-import { Telegraf, session } from 'telegraf';
+import { Telegraf } from 'telegraf';
+import { redisSessionMiddleware } from './middleware/redisSession.js';
 import { startCommand } from './commands/start.js';
 import { settingsCommand } from './commands/settings.js';
 import { setaiCommand } from './commands/setai.js';
@@ -18,7 +19,7 @@ import { handleCallbackQuery } from './handlers/callbackQuery.js';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
-bot.use(session());
+bot.use(redisSessionMiddleware());
 
 bot.use((ctx, next) => {
   // Ensure session exists
