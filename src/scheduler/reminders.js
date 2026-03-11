@@ -26,24 +26,19 @@ export function startScheduler() {
 }
 
 function getUserLocalTime(timezone) {
-  try {
-    const now = new Date();
-    const formatted = new Intl.DateTimeFormat('en-GB', {
-      timeZone: timezone,
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).format(now);
-    const [hh, mm] = formatted.split(':').map(Number);
-    const slot = Math.floor(mm / 5) * 5;
-    return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
-  } catch {
-    return null; // invalid timezone — skip this user
-  }
+  const now = new Date();
+  const formatted = new Intl.DateTimeFormat('en-GB', {
+    timeZone: timezone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(now);
+  const [hh, mm] = formatted.split(':').map(Number);
+  const slot = Math.floor(mm / 5) * 5;
+  return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
 }
 
 function roundToFiveMinutes(timeStr) {
-  // Accepts "HH:MM" or "HH:MM:SS", rounds minutes to nearest 5-min slot
   const [hh, mm] = timeStr.split(':').map(Number);
   const slot = Math.floor(mm / 5) * 5;
   return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
@@ -57,42 +52,31 @@ async function checkReminders() {
       AND blog_channel_id IS NOT NULL
     `);
 
-    console.log(`[Reminder] Found ${users.length} user(s) with reminders enabled`);
-    if (users.length === 0) return;
-
     const today = new Date().toISOString().slice(0, 10);
 
     for (const user of users) {
       const currentSlot = getUserLocalTime(user.timezone);
-      if (!currentSlot) {
-        console.warn(`[Reminder] Invalid timezone "${user.timezone}" for user ${user.id}`);
-        continue;
-      }
-
       const reminderSlot = roundToFiveMinutes(user.reminder_time);
-      console.log(`[Reminder] user ${user.id}: currentSlot=${currentSlot} reminderSlot=${reminderSlot} tz=${user.timezone}`);
 
       if (currentSlot === reminderSlot) {
         const lockKey = `reminder:${user.id}:${today}`;
         const sent = await redis.get(lockKey);
-        if (!sent) {
-          await redis.set(lockKey, '1', 86400);
-          await sendDailyReminder(user);
-        }
+        if (sent) continue;
+        await redis.set(lockKey, '1', 86400);
+        await sendDailyReminder(user);
       }
 
-      // Evening nudge (separate block — doesn't skip with continue)
+      // Evening nudge
       if (user.evening_nudge_enabled) {
         const nudgeSlot = roundToFiveMinutes(user.evening_nudge_time);
         if (currentSlot === nudgeSlot) {
           const nudgeLock = `nudge:${user.id}:${today}`;
           const nudgeSent = await redis.get(nudgeLock);
-          if (!nudgeSent) {
-            const stats = await getTodayStats(user.id);
-            if (!stats || stats.chars_written === 0) {
-              await redis.set(nudgeLock, '1', 86400);
-              await sendNudge(user);
-            }
+          if (nudgeSent) continue;
+          const stats = await getTodayStats(user.id);
+          if (!stats || stats.chars_written === 0) {
+            await redis.set(nudgeLock, '1', 86400);
+            await sendNudge(user);
           }
         }
       }
@@ -110,30 +94,10 @@ async function sendDailyReminder(user) {
   } else {
     text += 'Сегодня ещё ничего не написано. Начни с одного предложения.';
   }
-
-  // Add AI suggestion or prompt to set up AI
-  if (user.ai_provider !== 'none') {
-    // User has AI configured
-    try {
-      const posts = await getRecentPublishedPosts(user.id, 15);
-      if (posts.length >= 3) {
-        const suggestion = await generateSuggestion(posts, user);
-        text += `\n\n💡 Идея для поста:\n${suggestion}\n\n📝 Напиши черновик: /new`;
-      }
-    } catch (err) {
-      console.warn(`Failed to generate suggestion for user ${user.id}:`, err.message);
-      // Don't include suggestion if generation fails, just send base message
-    }
-  } else {
-    // AI not configured
-    text += '\n\nЕсли нет идей о чем писать, настрой AI-ассистента, чтобы он подсказал новую тему, основываясь на твоих имеющихся текстах: /setai';
-  }
-
   try {
     await bot.telegram.sendMessage(user.telegram_user_id, text);
-    console.log(`Reminder sent to user ${user.id} (tg: ${user.telegram_user_id})`);
   } catch (err) {
-    console.error(`Reminder failed for user ${user.id} (tg: ${user.telegram_user_id}):`, err.message);
+    console.error(`Reminder failed for ${user.telegram_user_id}:`, err.message);
   }
 }
 
@@ -205,7 +169,7 @@ async function expireSubscriptions() {
   try {
     await query(`
       UPDATE users
-      SET subscription_status = 'expired', ai_provider = 'none'
+      SET subscription_status = 'expired', ai_provider = 'groq'
       WHERE subscription_status = 'active'
       AND subscription_expires_at < NOW()
     `);

@@ -33,7 +33,7 @@ export async function draftsCommand(ctx) {
   } else {
     drafts = await getUnusedDrafts(user.id);
     if (drafts.length === 0) {
-      await ctx.reply('Черновиков нет. Напиши новый, начав с команды /new!');
+      await ctx.reply('Черновиков нет. Напиши что-нибудь в группе черновиков!');
       return;
     }
   }
@@ -55,8 +55,7 @@ export async function draftsCommand(ctx) {
   });
 
   draftsList += `Итого: ${drafts.length} черновиков · ${totalChars} знаков\n`;
-  draftsList += 'Собери пост: /combine\n';
-  draftsList += 'Удалить черновик: /delete';
+  draftsList += 'Собери пост: /combine';
 
   await ctx.reply(draftsList);
 }

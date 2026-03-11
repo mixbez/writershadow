@@ -25,12 +25,14 @@ let botStarted = false;
 
 if (process.env.NODE_ENV === 'production') {
   server.post('/ws-webhook', async (req, reply) => {
-    console.log(`[WEBHOOK] Received update:`, JSON.stringify(req.body).substring(0, 200));
-    try {
-      await bot.handleUpdate(req.body);
-    } catch (err) {
-      console.error(`[WEBHOOK] Error:`, err);
-    }
+    const updateId = req.body?.update_id;
+    console.log(`[WEBHOOK] Received update ${updateId}:`, JSON.stringify(req.body).substring(0, 200));
+    // Fire-and-forget: return 200 immediately so Telegram doesn't retry
+    setImmediate(() => {
+      bot.handleUpdate(req.body).catch(err => {
+        console.error(`[WEBHOOK] Error processing update ${updateId}:`, err);
+      });
+    });
     return { ok: true };
   });
   await server.listen({ port: Number(process.env.PORT || 3001), host: '0.0.0.0' });

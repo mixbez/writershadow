@@ -20,15 +20,6 @@ export async function suggestCommand(ctx) {
 
   const user = await getUser(userId);
 
-  // Check if user has Pro access (paid subscription OR active demo)
-  const isPro = user?.subscription_status === 'active' ||
-                (user?.demo_expires_at && new Date(user.demo_expires_at) > new Date());
-
-  if (!isPro) {
-    await ctx.reply('Команда /suggest доступна только для WriterShadow Pro.\n\nПри подписке тебе открывается Claude для генерации идей.\n\nПиши /subscribe');
-    return;
-  }
-
   // Check if user has AI configured
   if (!user.ai_provider || user.ai_provider === 'none') {
     await ctx.reply('Сначала настрой AI-ассистента: /setai');
