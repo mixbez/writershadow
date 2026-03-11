@@ -194,6 +194,91 @@ describe('middleware/requireAdmin', () => {
 
 ---
 
+## Регресс-тесты — обязательно перед каждым деплоем
+
+### Почему это важно
+
+Каждый раз когда что-то деплоится без проверки — что-то ломается. Ниже минимальный чеклист который нужно пройти руками или автоматически перед тем как считать деплой успешным.
+
+### Шаг 1 — Убедиться что контейнер получает обновления
+
+```bash
+# Проверить что Telegram реально шлёт в наш контейнер
+curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo" | grep -E "url|pending|last_error"
+
+# В логах должны появляться [WEBHOOK] при каждом сообщении
+docker logs comparity-backend-writershadow-1 --tail=20 | grep WEBHOOK
+```
+
+**Красный флаг:** `last_error_message` в ответе getWebhookInfo — значит Telegram не может достучаться.
+
+### Шаг 2 — Убедиться что правильный контейнер запущен
+
+```bash
+# Проверить что в контейнере новый код, а не старый
+docker exec comparity-backend-writershadow-1 node -e "
+  import('/app/src/index.js').catch(e => console.error('IMPORT ERROR:', e.message))
+" 2>&1 | head -5
+
+# Проверить конкретный файл если было изменение
+docker exec comparity-backend-writershadow-1 grep -c "ключевая_строка" /app/src/путь/к/файлу.js
+```
+
+**Красный флаг:** контейнер `comparity-backend-writershadow-1` содержит старый код — это значит `cp` из `/root/writershadow/writershadow/src/` в `/opt/writershadow/src/` не был сделан перед rebuild.
+
+### Шаг 3 — Проверить базу данных
+
+```bash
+# Все миграции применены
+docker exec comparity-postgres-1 psql -U comparity -d writershadow -c "SELECT name FROM migrations ORDER BY id;"
+
+# Нет дублирующихся пользователей
+docker exec comparity-postgres-1 psql -U comparity -d writershadow -c "
+  SELECT telegram_user_id, COUNT(*) FROM users GROUP BY telegram_user_id HAVING COUNT(*) > 1;
+"
+```
+
+**Красный флаг:** дублирующиеся строки в `users` по `telegram_user_id` — это приводит к непредсказуемому поведению всех команд.
+
+### Шаг 4 — Прогнать ключевые сценарии руками
+
+Отправить боту по одному и убедиться что он отвечает:
+
+| Команда | Ожидаемый ответ |
+|---------|----------------|
+| `/start` | Просит переслать сообщение из канала |
+| `/settings` | Показывает кнопки включая AI-теги и Связки |
+| `/new тест` | "Черновик сохранён" |
+| `/drafts` | Список черновиков |
+| `/combine` | Просит выбрать черновики |
+| `/post` | Показывает кнопки включая "⏰ Отложить" |
+| `/suggest` | Возвращает идею (не зависает на "Анализирую...") |
+
+### Шаг 5 — Проверить переменные окружения в контейнере
+
+```bash
+docker exec comparity-backend-writershadow-1 env | grep -E "ANTHROPIC|GROQ|BOT_TOKEN|ADMIN"
+```
+
+Ключи должны быть:
+- `ANTHROPIC_API_KEY` начинается с `sk-ant-api03-`
+- `GROQ_API_KEY` начинается с `gsk_`
+- `BOT_TOKEN` совпадает с токеном бота в BotFather
+
+### Известные грабли (повторялись несколько раз)
+
+1. **Два источника кода** — comparity строит из `/opt/writershadow/`, изменения делаются в `/root/writershadow/writershadow/`. Всегда синхронизировать: `cp -r /root/writershadow/writershadow/src/. /opt/writershadow/src/` перед `docker compose build`.
+
+2. **Webhook timeout** — если `bot.handleUpdate` ждать (`await`) перед ответом — Telegram делает retry и сообщения дублируются. Обработчик уже сделан через `setImmediate` — не откатывать.
+
+3. **In-memory session** — `session()` из telegraf не работает с webhook (каждый запрос новый процесс). Используется `redisSessionMiddleware` — не менять.
+
+4. **Дублирующийся пользователь в БД** — если `/start` создаёт новую строку вместо обновления существующей, все команды начинают вести себя случайно. Проверять после каждого деплоя.
+
+5. **ANTHROPIC_API_KEY без префикса** — ключ без `sk-ant-api03-` даёт 401. Хранится в `/opt/comparity/.env`.
+
+---
+
 ## Версионирование и деплой
 
 ### Модель веток
