@@ -41,5 +41,5 @@ export function appendTags(text, tags = []) {
   }
 
   const tagString = tags.map(tag => `## ${tag}`).join(' ');
-  return `${text}\n\n${tagString}`;
+  return `${tagString}\n\n${text}`;
 }
