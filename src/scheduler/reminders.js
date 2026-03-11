@@ -38,6 +38,12 @@ function getUserLocalTime(timezone) {
   return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
 }
 
+function roundToFiveMinutes(timeStr) {
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const slot = Math.floor(mm / 5) * 5;
+  return `${String(hh).padStart(2, '0')}:${String(slot).padStart(2, '0')}`;
+}
+
 async function checkReminders() {
   try {
     const { rows: users } = await query(`
@@ -50,7 +56,7 @@ async function checkReminders() {
 
     for (const user of users) {
       const currentSlot = getUserLocalTime(user.timezone);
-      const reminderSlot = user.reminder_time.slice(0, 5);
+      const reminderSlot = roundToFiveMinutes(user.reminder_time);
 
       if (currentSlot === reminderSlot) {
         const lockKey = `reminder:${user.id}:${today}`;
@@ -62,7 +68,7 @@ async function checkReminders() {
 
       // Evening nudge
       if (user.evening_nudge_enabled) {
-        const nudgeSlot = user.evening_nudge_time.slice(0, 5);
+        const nudgeSlot = roundToFiveMinutes(user.evening_nudge_time);
         if (currentSlot === nudgeSlot) {
           const nudgeLock = `nudge:${user.id}:${today}`;
           const nudgeSent = await redis.get(nudgeLock);
