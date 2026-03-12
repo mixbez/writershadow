@@ -5,21 +5,14 @@ import { dirname, join } from 'path';
 import { bot } from './bot/index.js';
 import { startScheduler } from './scheduler/reminders.js';
 import { runMigrations } from './db/index.js';
-import {
-  getAnalyticsData,
-  getGlobalStats,
-  getCommandStats,
-  getDailyActiveUsers,
-  getRecentLogs,
-  getConversionFunnel,
-  getTopUsers
-} from './api/analytics.js';
+import { setupAnalyticsRoutes } from './routes/analytics.js';
 
 const server = Fastify({ logger: true });
 const __dir = dirname(fileURLToPath(import.meta.url));
 
 await runMigrations();
 startScheduler();
+await setupAnalyticsRoutes(server);
 
 let botStarted = false;
 
