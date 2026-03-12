@@ -68,5 +68,5 @@ test('/suggest требует минимум 3 поста', async () => {
   const ctx = createMockCtx();
   await suggestCommand(ctx);
 
-  assert.ok(ctx._edits[0].includes('мало публикаций'));
+  assert.ok(ctx._edits[0].includes('Мало постов для анализа'));
 });

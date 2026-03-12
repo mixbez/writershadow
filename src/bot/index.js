@@ -16,6 +16,7 @@ import { announceCommand } from './commands/announce.js';
 import { adminCommand } from './commands/admin.js';
 import { handleDraftMessage } from './handlers/draftMessage.js';
 import { handleCallbackQuery } from './handlers/callbackQuery.js';
+import { handleJsonImport } from './handlers/importHandler.js';
 
 export const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -67,5 +68,6 @@ bot.telegram.setMyCommands([
   { command: 'info', description: 'Подробная инструкция по боту' },
 ]).catch(err => console.error('Error setting commands:', err));
 
+bot.on('document', handleJsonImport);
 bot.on('message', handleDraftMessage);
 bot.on('callback_query', handleCallbackQuery);
