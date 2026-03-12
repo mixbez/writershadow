@@ -21,36 +21,26 @@
 
 ### Фреймворк
 
-Проект использует **Jest** с поддержкой ES modules через `--experimental-vm-modules`.
-
-Установка (если `jest` ещё нет в `package.json`):
-
-```bash
-npm install --save-dev jest
-```
-
-Добавить в `package.json`:
-
-```json
-"scripts": {
-  "test": "node --experimental-vm-modules node_modules/.bin/jest",
-  "test:coverage": "node --experimental-vm-modules node_modules/.bin/jest --coverage"
-},
-"jest": {
-  "transform": {}
-}
-```
+Проект использует встроенный **Node.js test runner** (`node:test`) с флагом `--experimental-test-module-mocks` для мокирования модулей. Никаких внешних зависимостей для тестов не нужно.
 
 ### Где лежат тесты
 
-Все тесты — в папке `tests/`. Файл теста называется по модулю: `tests/crypto.test.js`, `tests/sanitize.test.js` и т.д.
+Все тесты — в папке `tests/`. Структура:
+
+```
+tests/
+  smoke.test.js              # бот стартует, отвечает на базовые команды
+  imports.test.js            # все named imports между модулями валидны
+  commands/                  # юнит-тесты отдельных команд
+  helpers/mockCtx.js         # фабрика моков для ctx и пользователя
+  utils/                     # тесты утилит
+```
 
 ### Как запустить
 
 ```bash
-npm test                 # все тесты
-npm run test:coverage    # с отчётом покрытия
-npx jest tests/crypto.test.js  # один файл
+npm test                                          # все тесты
+node --experimental-test-module-mocks --test tests/smoke.test.js  # один файл
 ```
 
 ### Приоритеты: что тестировать в первую очередь
@@ -348,6 +338,17 @@ docker logs writershadow-app --tail=50
 ```
 
 Нет ошибок → релиз успешен.
+
+#### Шаг 7. Проверить актуальность документации (ОБЯЗАТЕЛЬНО, на английском)
+
+After every deploy, review **README.md** and **CLAUDE.md** and ask:
+
+- Does README.md reflect the current feature set? (commands, subscription model, setup flow)
+- Does CLAUDE.md reflect current test runner, framework, file structure, and known pitfalls?
+- Are there new commands, handlers, or environment variables that are undocumented?
+- Are there sections that describe things that no longer exist?
+
+If anything is stale — update it in the same commit or as a follow-up commit on `dev` before merging to `main`. Outdated docs are treated as a bug.
 
 ### Как откатиться (rollback)
 
