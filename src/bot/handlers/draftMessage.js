@@ -159,39 +159,6 @@ async function setupChannel(ctx, userId, text) {
   );
 }
 
-async function setupGroup(ctx, userId, text) {
-  let groupId = null;
-
-  // Check if forwarded message
-  if (ctx.message.forward_origin && ctx.message.forward_origin.type === 'supergroup') {
-    groupId = ctx.message.forward_origin.chat.id;
-  } else if (text.startsWith('@')) {
-    // Parse @username
-    groupId = text;
-  } else {
-    await ctx.reply('Пожалуйста, пришли сообщение из группы или напиши @username.');
-    return;
-  }
-
-  // Check if bot is member in group
-  try {
-    await ctx.telegram.getChatMember(groupId, ctx.botInfo.id);
-  } catch (err) {
-    await ctx.reply('Добавь меня в группу черновиков, затем повтори.');
-    return;
-  }
-
-  // Save group and finish setup
-  await updateUser(userId, { draft_group_id: groupId });
-  ctx.session.setupStep = null;
-  await ctx.reply(
-    'Готово! Настройки сохранены.\n\n' +
-    'Напоминание о написании: каждый день в 09:00 (Europe/Moscow).\n' +
-    'Поменять время и другие настройки: /settings\n' +
-    'Настроить AI-ассистента: /setai'
-  );
-}
-
 async function setupReminderTime(ctx, userId, text) {
   const match = text.match(/^(\d{1,2}):(\d{2})$/);
   if (!match) {

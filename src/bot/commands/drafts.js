@@ -33,7 +33,7 @@ export async function draftsCommand(ctx) {
   } else {
     drafts = await getUnusedDrafts(user.id);
     if (drafts.length === 0) {
-      await ctx.reply('Черновиков нет. Напиши что-нибудь в группе черновиков!');
+      await ctx.reply('Черновиков нет. Используй /new чтобы написать черновик.');
       return;
     }
   }
@@ -80,7 +80,7 @@ export async function draftsfullCommand(ctx) {
   const drafts = await getUnusedDrafts(user.id);
 
   if (drafts.length === 0) {
-    await ctx.reply('Черновиков нет. Напиши что-нибудь в группе черновиков!');
+    await ctx.reply('Черновиков нет. Используй /new чтобы написать черновик.');
     return;
   }
 

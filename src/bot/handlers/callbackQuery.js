@@ -217,7 +217,7 @@ async function handleToggleSetting(ctx, data) {
     );
   }
 
-  buttons.push([{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }]);
+  buttons.push([{ text: 'Изменить канал', callback_data: 'settings_reconfigure' }]);
 
   const newLabel = updatedUser[field] ? labelOn : labelOff;
   console.log(`[TOGGLE] Updated ${field} to ${newLabel}, editing menu...`);

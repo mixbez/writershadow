@@ -50,7 +50,7 @@ AI-теги: ${user.ai_tags_enabled ? 'Вкл' : 'Выкл'}
     [{ text: `Связки: ${user.bridge_enabled ? 'Вкл' : 'Выкл'}`, callback_data: 'toggle_bridge' }]
   );
 
-  buttons.push([{ text: 'Изменить канал / группу', callback_data: 'settings_reconfigure' }]);
+  buttons.push([{ text: 'Изменить канал', callback_data: 'settings_reconfigure' }]);
 
   await ctx.reply(text, {
     reply_markup: {
