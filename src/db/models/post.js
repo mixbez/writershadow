@@ -113,10 +113,10 @@ export async function importPostsForUser(userId, texts) {
   let count = 0;
   for (const text of texts) {
     await query(
-      `INSERT INTO posts (user_id, text, status, published_at)
-       VALUES ($1, $2, 'imported', NOW())
+      `INSERT INTO posts (user_id, text, char_count, status, published_at)
+       VALUES ($1, $2, $3, 'imported', NOW())
        ON CONFLICT DO NOTHING`,
-      [userId, text]
+      [userId, text, text.length]
     );
     count++;
   }
