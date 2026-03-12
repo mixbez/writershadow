@@ -21,7 +21,7 @@ export async function statsCommand(ctx) {
 
   // Refresh channel member count in background
   if (user.blog_channel_id) {
-    ctx.telegram.getChatMemberCount(user.blog_channel_id)
+    ctx.telegram.getChatMembersCount(user.blog_channel_id)
       .then(count => updateChannelMemberCount(user.id, count))
       .catch(() => {});
   }

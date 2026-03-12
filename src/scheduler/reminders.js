@@ -189,7 +189,7 @@ async function refreshChannelMemberCounts() {
     );
     for (const user of users) {
       try {
-        const count = await bot.telegram.getChatMemberCount(user.blog_channel_id);
+        const count = await bot.telegram.getChatMembersCount(user.blog_channel_id);
         await updateChannelMemberCount(user.id, count);
       } catch (err) {
         // Channel may be inaccessible — skip silently
