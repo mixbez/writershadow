@@ -55,7 +55,7 @@ export async function getLatestDraftPost(userId) {
 export async function getRecentPublishedPosts(userId, limit = 15) {
   const result = await query(
     `SELECT * FROM posts
-     WHERE user_id = $1 AND status = 'published'
+     WHERE user_id = $1 AND status IN ('published', 'imported')
      ORDER BY published_at DESC
      LIMIT $2`,
     [userId, limit]
