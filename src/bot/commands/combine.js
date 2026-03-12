@@ -2,7 +2,7 @@ import { getUser, isUserSetup, isProUser } from '../../db/models/user.js';
 import { getUnusedDrafts, getDraftsByIds } from '../../db/models/draft.js';
 import { createDraftPost } from '../../db/models/post.js';
 import { redis } from '../../redis/client.js';
-import { generateBridge } from '../../ai/provider.js';
+import { generateCombine } from '../../ai/provider.js';
 
 export async function combineCommand(ctx) {
   const userId = ctx.from.id;
@@ -74,36 +74,24 @@ export async function handleCombineSelection(ctx, text) {
   const selectedDrafts = await getDraftsByIds(selectedIds);
   const user = await getUser(userId);
 
-  // Build post text with bridges if enabled (Feature 7)
+  // Build post text with AI combine if enabled (Feature 7)
   let postText = '';
   if (selectedDrafts.length === 1) {
     postText = selectedDrafts[0].text;
   } else if (isProUser(user) && user.bridge_enabled && user.ai_provider !== 'none') {
-    // Generate bridges between drafts
-    const parts = [];
-    for (let i = 0; i < selectedDrafts.length; i++) {
-      parts.push(selectedDrafts[i].text);
-
-      // Generate bridge to next draft
-      if (i < selectedDrafts.length - 1) {
-        try {
-          const bridge = await generateBridge(
-            selectedDrafts[i].text,
-            selectedDrafts[i + 1].text,
-            user
-          );
-          if (bridge) {
-            parts.push(bridge);
-          }
-        } catch (err) {
-          console.error('Bridge generation error:', err);
-          // Silently skip bridge, drafts will be combined without it
-        }
-      }
+    const statusMsg = await ctx.reply('⏳ Собираю черновики в единый текст...');
+    try {
+      const texts = selectedDrafts.map(d => d.text);
+      postText = await generateCombine(texts, user);
+      await ctx.telegram.deleteMessage(userId, statusMsg.message_id).catch(() => {});
+    } catch (err) {
+      console.error('Combine generation error:', err);
+      await ctx.telegram.deleteMessage(userId, statusMsg.message_id).catch(() => {});
+      // Fallback: plain concatenation
+      postText = selectedDrafts.map(d => d.text).join('\n\n');
     }
-    postText = parts.join('\n\n');
   } else {
-    // No bridge - just concatenate
+    // No AI - just concatenate
     postText = selectedDrafts.map(d => d.text).join('\n\n');
   }
 

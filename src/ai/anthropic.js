@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { buildPrompt, buildTagsPrompt, buildBridgePrompt, buildAskPrompt } from './prompt.js';
+import { buildPrompt, buildTagsPrompt, buildBridgePrompt, buildCombinePrompt, buildAskPrompt } from './prompt.js';
 
 export async function generateWithAnthropic(posts, apiKey, options = {}) {
   const client = new Anthropic({ apiKey });
@@ -38,6 +38,20 @@ export async function generateBridgeWithAnthropic(text1, text2, apiKey, options 
   const response = await client.messages.create({
     model: 'claude-haiku-4-5-20251001',
     max_tokens: 100,
+    system: messages.system,
+    messages: [{ role: 'user', content: messages.user }],
+  });
+
+  return response.content[0].text.trim();
+}
+
+export async function generateCombineWithAnthropic(drafts, apiKey, options = {}) {
+  const client = new Anthropic({ apiKey });
+  const messages = buildCombinePrompt(drafts, options);
+
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2000,
     system: messages.system,
     messages: [{ role: 'user', content: messages.user }],
   });
