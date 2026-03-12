@@ -78,6 +78,21 @@ export async function updateChannelMemberCount(userId, count) {
   );
 }
 
+export async function getSimilarPromoteUsers(excludeUserId, memberCount) {
+  const result = await query(
+    `SELECT username, channel_member_count
+     FROM users
+     WHERE promote_enabled = TRUE
+       AND is_active = TRUE
+       AND id != $1
+       AND username IS NOT NULL
+     ORDER BY ABS(channel_member_count - $2) ASC NULLS LAST
+     LIMIT 3`,
+    [excludeUserId, memberCount ?? 0]
+  );
+  return result.rows;
+}
+
 export function isProUser(user) {
   if (!user) return false;
   // Pro if subscription is active OR demo hasn't expired
