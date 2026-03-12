@@ -152,7 +152,10 @@ One user = one row. Stores all settings.
 | `subscription_status` | `trial` / `active` / `expired` |
 | `demo_expires_at` | Trial period expiration date |
 | `ai_tags_enabled` | Auto-generate tags (Pro) |
-| `bridge_enabled` | Insert connective text on combine (Pro) |
+| `bridge_enabled` | AI-merge drafts on combine (Pro) |
+| `channel_member_count` | Subscriber count (cached from Telegram) |
+| `channel_member_count_updated_at` | When subscriber count was last fetched |
+| `promote_enabled` | Whether author is visible in the promote pool |
 
 #### `drafts`
 
@@ -229,8 +232,8 @@ Same as above, but shows full text of each draft.
 ##### `/combine`
 Interactive post assembler:
 1. Bot shows drafts with buttons — user selects needed ones
-2. Drafts combine in selection order
-3. Pro (bridge_enabled): AI inserts 1–2 connective sentences between fragments
+2. Drafts are concatenated in selection order
+3. Pro (`bridge_enabled`): AI receives all selected drafts at once and produces a single cohesive text, preserving the author's style. May reorder fragments and remove duplicate ideas.
 4. Shows preview; can save as post or cancel
 
 ##### `/post`
@@ -258,6 +261,9 @@ Choose AI provider:
 ##### `/suggest` *(Pro)*
 Generate next post idea based on last 15 published. Requires minimum 3 posts in history. Returns topic and angle (max 150 words).
 
+##### `/ask` *(Pro)*
+AI acts as a curious reader who knows the author's topics but not the details. Returns 3–5 questions in the author's language to inspire deeper exploration of existing material.
+
 ##### `/settings`
 Configure reminders:
 - Daily reminder time
@@ -265,9 +271,15 @@ Configure reminders:
 - Enable / disable evening reminder (if no writing that day)
 
 ##### `/stats`
-Statistics: characters, drafts, and posts for today, week, and month. Shows trend (up / down).
+Statistics: characters, drafts, and posts for today, week, and month. Shows trend (up / down). Also shows current subscriber count for the author's channel (fetched from Telegram on each call).
 
 #### Administrative
+
+##### `/promote`
+Opt in to a mutual promotion pool:
+- Enables visibility of the author's `@username` to other users
+- Shows up to 3 authors in the pool with the closest subscriber count
+- `/promote off` — opt out and become hidden
 
 ##### `/admin`
 Owner only (by `ADMIN_USER_ID`):
@@ -295,7 +307,8 @@ ai_provider = 'paid'       → Anthropic API (owner's key, Pro mode)
 |---|---|---|
 | `generateSuggestion` | Up to 15 published posts | Next topic idea (≤150 words) |
 | `generateTags` | Draft text | 1–3 comma-separated tags |
-| `generateBridge` | Two adjacent drafts | 1–2 connective sentences |
+| `generateCombine` | All selected drafts | Single cohesive text in author's style |
+| `generateAsk` | Up to 15 published posts | 3–5 reader questions |
 
 #### Prompt injection defense (`src/ai/sanitize.js`)
 
@@ -617,7 +630,10 @@ writershadow/
 | `subscription_status` | `trial` / `active` / `expired` |
 | `demo_expires_at` | Дата окончания пробного периода |
 | `ai_tags_enabled` | Автоматическая генерация тегов (Pro) |
-| `bridge_enabled` | Вставка связующего текста при combine (Pro) |
+| `bridge_enabled` | AI-объединение черновиков при combine (Pro) |
+| `channel_member_count` | Число подписчиков канала (кэш из Telegram) |
+| `channel_member_count_updated_at` | Когда последний раз обновлялся счётчик |
+| `promote_enabled` | Виден ли автор в пуле взаимопиара |
 
 ### `drafts`
 
@@ -695,7 +711,7 @@ writershadow/
 Интерактивный сборщик поста:
 1. Бот показывает черновики с кнопками — пользователь выбирает нужные
 2. Черновики объединяются в порядке выбора
-3. Pro (bridge_enabled): между фрагментами AI вставляет 1–2 связующих предложения
+3. Pro (`bridge_enabled`): AI получает все выбранные черновики сразу и создаёт единый связный текст, сохраняя авторский стиль. Может менять порядок фрагментов и убирать дублирующиеся мысли.
 4. Показывается превью; можно сохранить как пост или отменить
 
 #### `/post`
@@ -723,6 +739,9 @@ writershadow/
 #### `/suggest` *(Pro)*
 Генерирует идею для следующего поста на основе последних 15 опубликованных. Требует минимум 3 поста в истории. Возвращает тему и угол подачи (до 150 слов).
 
+#### `/ask` *(Pro)*
+AI ведёт себя как любопытный читатель, который знаком с темами автора, но знает меньше деталей. Возвращает 3–5 вопросов на языке автора, чтобы побудить копнуть глубже в уже существующий материал.
+
 #### `/settings`
 Настройка напоминаний:
 - Время ежедневного напоминания
@@ -730,9 +749,15 @@ writershadow/
 - Включить / выключить вечерний напоминатель (если не писал в этот день)
 
 #### `/stats`
-Статистика: символов, черновиков и постов за сегодня, неделю и месяц. Показывает тренд (растёт / падает).
+Статистика: символов, черновиков и постов за сегодня, неделю и месяц. Показывает тренд (растёт / падает). Также отображает актуальное число подписчиков канала (запрашивается у Telegram при каждом вызове).
 
 ### Служебные
+
+#### `/promote`
+Вступление в пул взаимопиара:
+- Делает `@username` автора видимым другим пользователям пула
+- Показывает до 3 авторов с наиболее близким числом подписчиков
+- `/promote off` — выход из пула и скрытие из выдачи
 
 #### `/admin`
 Только для владельца (по `ADMIN_USER_ID`):
@@ -760,7 +785,8 @@ ai_provider = 'paid'       → Anthropic API (ключ владельца, ре�
 |---|---|---|
 | `generateSuggestion` | До 15 опубликованных постов | Идея для следующей темы (≤150 слов) |
 | `generateTags` | Текст черновика | 1–3 тега через запятую |
-| `generateBridge` | Два соседних черновика | 1–2 связующих предложения |
+| `generateCombine` | Все выбранные черновики | Единый связный текст в авторском стиле |
+| `generateAsk` | До 15 опубликованных постов | 3–5 вопросов от читателя |
 
 ### Защита от prompt injection (`src/ai/sanitize.js`)
 
