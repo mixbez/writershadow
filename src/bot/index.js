@@ -10,6 +10,7 @@ import { newDraftCommand } from './commands/newDraft.js';
 import { combineCommand } from './commands/combine.js';
 import { postCommand } from './commands/post.js';
 import { suggestCommand } from './commands/suggest.js';
+import { askCommand } from './commands/ask.js';
 import { infoCommand } from './commands/info.js';
 import { deleteCommand } from './commands/delete.js';
 import { announceCommand } from './commands/announce.js';
@@ -47,6 +48,7 @@ bot.command('new', newDraftCommand);
 bot.command('combine', combineCommand);
 bot.command('post', postCommand);
 bot.command('suggest', suggestCommand);
+bot.command('ask', askCommand);
 bot.command('info', infoCommand);
 bot.command('delete', deleteCommand);
 bot.command('announce', announceCommand);
@@ -62,6 +64,7 @@ bot.telegram.setMyCommands([
   { command: 'combine', description: 'Объединить черновики в пост' },
   { command: 'post', description: 'Опубликовать или отложить пост' },
   { command: 'suggest', description: 'Идея для следующего поста' },
+  { command: 'ask', description: 'Вопросы любопытного читателя по твоим темам' },
   { command: 'setai', description: 'Выбрать AI-провайдера' },
   { command: 'settings', description: 'Настройки напоминаний и AI' },
   { command: 'stats', description: 'Статистика письма' },

@@ -1,5 +1,5 @@
-import { generateWithGroq, generateTagsWithGroq, generateBridgeWithGroq } from './groq.js';
-import { generateWithAnthropic, generateTagsWithAnthropic, generateBridgeWithAnthropic } from './anthropic.js';
+import { generateWithGroq, generateTagsWithGroq, generateBridgeWithGroq, generateAskWithGroq } from './groq.js';
+import { generateWithAnthropic, generateTagsWithAnthropic, generateBridgeWithAnthropic, generateAskWithAnthropic } from './anthropic.js';
 import { decryptKey } from '../crypto/keys.js';
 
 export async function generateSuggestion(posts, user) {
@@ -51,6 +51,23 @@ export async function generateBridge(text1, text2, user) {
     }
     case 'paid': {
       return generateBridgeWithAnthropic(text1, text2, process.env.ANTHROPIC_API_KEY, { safe: true });
+    }
+    default:
+      throw new Error('AI provider not configured');
+  }
+}
+
+export async function generateAsk(posts, user) {
+  switch (user.ai_provider) {
+    case 'groq': {
+      return generateAskWithGroq(posts, process.env.GROQ_API_KEY);
+    }
+    case 'anthropic': {
+      const apiKey = decryptKey(user.ai_key_encrypted);
+      return generateAskWithAnthropic(posts, apiKey);
+    }
+    case 'paid': {
+      return generateAskWithAnthropic(posts, process.env.ANTHROPIC_API_KEY, { safe: true });
     }
     default:
       throw new Error('AI provider not configured');
