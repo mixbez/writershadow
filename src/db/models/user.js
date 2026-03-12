@@ -69,6 +69,15 @@ export async function getUserByDraftGroupId(draftGroupId) {
   return result.rows[0];
 }
 
+export async function updateChannelMemberCount(userId, count) {
+  await query(
+    `UPDATE users
+     SET channel_member_count = $1, channel_member_count_updated_at = NOW()
+     WHERE id = $2`,
+    [count, userId]
+  );
+}
+
 export function isProUser(user) {
   if (!user) return false;
   // Pro if subscription is active OR demo hasn't expired

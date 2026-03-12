@@ -1,4 +1,4 @@
-import { getUser, isUserSetup } from '../../db/models/user.js';
+import { getUser, isUserSetup, updateChannelMemberCount } from '../../db/models/user.js';
 import { getTodayStats, getStatsForPeriod } from '../../db/models/dailyStats.js';
 
 export async function statsCommand(ctx) {
@@ -18,6 +18,14 @@ export async function statsCommand(ctx) {
   }
 
   const user = await getUser(userId);
+
+  // Refresh channel member count in background
+  if (user.blog_channel_id) {
+    ctx.telegram.getChatMemberCount(user.blog_channel_id)
+      .then(count => updateChannelMemberCount(user.id, count))
+      .catch(() => {});
+  }
+
   const today = new Date();
   const todayStr = today.toISOString().slice(0, 10);
 
@@ -79,7 +87,11 @@ export async function statsCommand(ctx) {
     ? `${todayStats.chars_written} зн. · ${todayStats.drafts_count} черновика · ${todayStats.posts_published} постов`
     : '0 зн. · 0 черновиков · 0 постов';
 
-  const message = `📊 Статистика
+  const memberCountRow = user.channel_member_count != null
+    ? `\nПодписчики канала: ${user.channel_member_count.toLocaleString('ru-RU')}`
+    : '';
+
+  const message = `📊 Статистика${memberCountRow}
 
 Сегодня: ${todayRow}
 

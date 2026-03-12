@@ -6,6 +6,7 @@ import { upsertDailyStats } from '../db/models/dailyStats.js';
 import { redis } from '../redis/client.js';
 import { getDueScheduledPosts, publishPost } from '../db/models/post.js';
 import { markDraftsAsUsed } from '../db/models/draft.js';
+import { updateChannelMemberCount } from '../db/models/user.js';
 import { splitText } from '../utils/splitText.js';
 import { stripTags } from '../utils/tags.js';
 
@@ -21,6 +22,9 @@ export function startScheduler() {
 
   // Every minute: check for scheduled posts
   cron.schedule('* * * * *', () => checkScheduledPosts());
+
+  // Every day at 06:00 UTC: refresh channel member counts
+  cron.schedule('0 6 * * *', () => refreshChannelMemberCounts());
 
   console.log('Scheduler started');
 }
@@ -175,6 +179,24 @@ async function expireSubscriptions() {
     `);
   } catch (err) {
     console.error('Subscription expiry check error:', err);
+  }
+}
+
+async function refreshChannelMemberCounts() {
+  try {
+    const { rows: users } = await query(
+      'SELECT id, blog_channel_id FROM users WHERE is_active = TRUE AND blog_channel_id IS NOT NULL'
+    );
+    for (const user of users) {
+      try {
+        const count = await bot.telegram.getChatMemberCount(user.blog_channel_id);
+        await updateChannelMemberCount(user.id, count);
+      } catch (err) {
+        // Channel may be inaccessible — skip silently
+      }
+    }
+  } catch (err) {
+    console.error('Channel member count refresh error:', err);
   }
 }
 
