@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "NODE_ENV=development node src/index.js"
+    "dev": "NODE_ENV=development node src/index.js",
+    "test": "node --experimental-test-module-mocks --test tests/**/*.test.js tests/**/**/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.0",
