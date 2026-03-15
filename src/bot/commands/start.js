@@ -15,7 +15,7 @@ export async function startCommand(ctx) {
     const setup = await isUserSetup(userId);
     if (setup) {
       console.log(`[START] User ${userId} already setup`);
-      await ctx.reply('Ты уже настроен. Используй /settings для изменений.');
+      await ctx.reply('Ты уже настроен.\n\nКоманды:\n• /info — полный список команд и советы\n• /settings — изменить настройки');
       return;
     }
 
