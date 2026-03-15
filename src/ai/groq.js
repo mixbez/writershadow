@@ -1,5 +1,5 @@
 import Groq from 'groq-sdk';
-import { buildPrompt, buildTagsPrompt, buildBridgePrompt, buildCombinePrompt, buildAskPrompt } from './prompt.js';
+import { buildPrompt, buildTagsPrompt, buildBridgePrompt, buildCombinePrompt, buildAskPrompt, buildExpandPrompt } from './prompt.js';
 
 export async function generateWithGroq(posts, apiKey) {
   const client = new Groq({ apiKey });
@@ -74,6 +74,22 @@ export async function generateAskWithGroq(posts, apiKey) {
   const response = await client.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
     max_tokens: 400,
+    messages: [
+      { role: 'system', content: messages.system },
+      { role: 'user', content: messages.user },
+    ],
+  });
+
+  return response.choices[0].message.content.trim();
+}
+
+export async function generateExpandWithGroq(drafts, apiKey) {
+  const client = new Groq({ apiKey });
+  const messages = buildExpandPrompt(drafts, { safe: false });
+
+  const response = await client.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    max_tokens: 600,
     messages: [
       { role: 'system', content: messages.system },
       { role: 'user', content: messages.user },

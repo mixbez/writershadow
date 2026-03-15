@@ -11,6 +11,7 @@ import { combineCommand } from './commands/combine.js';
 import { postCommand } from './commands/post.js';
 import { suggestCommand } from './commands/suggest.js';
 import { askCommand } from './commands/ask.js';
+import { expandCommand } from './commands/expand.js';
 import { promoteCommand } from './commands/promote.js';
 import { infoCommand } from './commands/info.js';
 import { deleteCommand } from './commands/delete.js';
@@ -50,6 +51,7 @@ bot.command('combine', combineCommand);
 bot.command('post', postCommand);
 bot.command('suggest', suggestCommand);
 bot.command('ask', askCommand);
+bot.command('expand', expandCommand);
 bot.command('promote', promoteCommand);
 bot.command('info', infoCommand);
 bot.command('delete', deleteCommand);
@@ -58,20 +60,21 @@ bot.command('admin', adminCommand);
 
 // Set bot commands menu
 bot.telegram.setMyCommands([
-  { command: 'start', description: 'Настройка канала для публикации' },
-  { command: 'new', description: 'Создать новый черновик' },
-  { command: 'drafts', description: 'Список черновиков (или /drafts тег)' },
-  { command: 'drafts_full', description: 'Полный текст черновиков' },
-  { command: 'delete', description: 'Удалить черновики (или /delete all)' },
-  { command: 'combine', description: 'Объединить черновики в пост' },
-  { command: 'post', description: 'Опубликовать или отложить пост' },
-  { command: 'suggest', description: 'Идея для следующего поста' },
-  { command: 'ask', description: 'Вопросы любопытного читателя по твоим темам' },
-  { command: 'promote', description: 'Найти похожих авторов для взаимопиара' },
-  { command: 'setai', description: 'Выбрать AI-провайдера' },
-  { command: 'settings', description: 'Настройки напоминаний и AI' },
-  { command: 'stats', description: 'Статистика письма' },
-  { command: 'info', description: 'Подробная инструкция по боту' },
+  { command: 'info', description: '📖 Полный список команд и советы — начни отсюда!' },
+  { command: 'start', description: '🚀 Первоначальная настройка канала для публикации' },
+  { command: 'new', description: '✍️ Создать новый черновик (быстро или развёрнуто)' },
+  { command: 'drafts', description: '📄 Список всех черновиков — бери номера для /expand' },
+  { command: 'drafts_full', description: '📋 Полный текст всех черновиков' },
+  { command: 'delete', description: '🗑️ Удалить черновики (один за раз или все сразу)' },
+  { command: 'combine', description: '🔗 Объединить несколько черновиков в один пост' },
+  { command: 'post', description: '📤 Опубликовать готовый пост или отложить на время' },
+  { command: 'suggest', description: '💡 AI идея для нового поста (анализирует твои публикации)' },
+  { command: 'ask', description: '🤔 AI вопросы читателя (как развить тему дальше)' },
+  { command: 'expand', description: '🚀 AI развить черновики в полноценные посты' },
+  { command: 'promote', description: '🤝 Найти похожих авторов для взаимопиара' },
+  { command: 'setai', description: '🤖 Выбрать AI (Groq бесплатно или свой Anthropic ключ)' },
+  { command: 'settings', description: '⚙️ Настройки напоминаний, часовой пояс, AI-теги' },
+  { command: 'stats', description: '📊 Статистика письма (символы, посты, активность)' },
 ]).catch(err => console.error('Error setting commands:', err));
 
 bot.on('document', handleJsonImport);
