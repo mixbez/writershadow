@@ -140,23 +140,51 @@ async function setupChannel(ctx, userId, text) {
   try {
     const member = await ctx.telegram.getChatMember(channelId, ctx.botInfo.id);
     if (!member || !member.is_administrator) {
+      console.log(`[SETUP] Bot not admin in ${channelId}. Member:`, member);
       await ctx.reply(
-        'Добавь меня как администратора в канал (нужно право "Публикация сообщений"), затем повтори.'
+        '❌ Я не администратор в этом канале.\n\n' +
+        'Пожалуйста:\n' +
+        '1. Открой канал → Управление → Администраторы\n' +
+        '2. Добавь @WriterShadowBot с правом "Публикация сообщений"\n' +
+        '3. Пришли мне сообщение из канала или повтори @username'
       );
       return;
     }
+    console.log(`[SETUP] Bot is admin in ${channelId}`);
   } catch (err) {
-    await ctx.reply('Не могу проверить права в канале. Добавь меня админом и повтори.');
+    console.error(`[SETUP] Error checking admin in ${channelId}:`, err.message);
+    await ctx.reply(
+      '⚠️ Не получилось проверить права. Возможные причины:\n' +
+      '• Неверный username канала (напишите без пробелов, с @)\n' +
+      '• Бота удалили из администраторов\n' +
+      '• Проблема с доступом\n\n' +
+      'Добавь меня админом в канал и повтори.'
+    );
     return;
   }
 
   // Save channel and finish setup
-  await updateUser(userId, { blog_channel_id: channelId });
-  ctx.session.setupStep = null;
-  await ctx.reply(
-    'Готово! Канал настроен.\n\n' +
-    'Теперь используй /drafts для управления черновиками, /combine для сборки постов, /post для публикации.'
-  );
+  try {
+    const updated = await updateUser(userId, { blog_channel_id: channelId });
+    if (!updated || !updated.blog_channel_id) {
+      throw new Error('Failed to save channel to database');
+    }
+    console.log(`[SETUP] Successfully saved channel ${channelId} for user ${userId}`);
+    ctx.session.setupStep = null;
+    await ctx.reply(
+      '✅ Готово! Канал настроен.\n\n' +
+      'Теперь используй:\n' +
+      '• /drafts — управление черновиками\n' +
+      '• /combine — сборка постов\n' +
+      '• /post — публикация\n' +
+      '• /info — все команды'
+    );
+  } catch (err) {
+    console.error(`[SETUP] Error saving channel for user ${userId}:`, err);
+    await ctx.reply(
+      '❌ Не удалось сохранить канал в базу данных. Попробуй еще раз или обратись в поддержку.'
+    );
+  }
 }
 
 async function setupReminderTime(ctx, userId, text) {
