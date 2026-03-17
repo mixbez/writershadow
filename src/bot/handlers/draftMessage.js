@@ -124,23 +124,63 @@ async function handleSetupMessage(ctx, text) {
 
 async function setupChannel(ctx, userId, text) {
   let channelId = null;
+  let channelUsername = null;
 
-  // Check if forwarded message
-  if (ctx.message.forward_origin && ctx.message.forward_origin.type === 'channel') {
-    channelId = ctx.message.forward_origin.chat.id;
-  } else if (text.startsWith('@')) {
-    // Parse @username
+  // Check if forwarded message - try multiple APIs
+  console.log(`[SETUP] Checking forward fields:`, {
+    forward_origin: ctx.message.forward_origin,
+    forward_from_chat: ctx.message.forward_from_chat,
+    forward_from: ctx.message.forward_from,
+  });
+
+  // New API (v7.0+)
+  if (ctx.message.forward_origin?.type === 'channel') {
+    channelId = ctx.message.forward_origin.chat?.id;
+    console.log(`[SETUP] Got channel from forward_origin (new API):`, channelId);
+  }
+  // Old API - forward_from_chat
+  else if (ctx.message.forward_from_chat?.id) {
+    channelId = ctx.message.forward_from_chat.id;
+    console.log(`[SETUP] Got channel from forward_from_chat (old API):`, channelId);
+  }
+  // Manual @username
+  else if (text.startsWith('@')) {
+    // Parse @username - need to get ID first
+    channelUsername = text;
     channelId = text;
+    console.log(`[SETUP] Got channel from @username:`, channelId);
   } else {
     await ctx.reply('Пожалуйста, пришли сообщение из канала или напиши @username.');
     return;
   }
 
+  // If we have @username, try to get the actual chat ID first
+  if (channelUsername) {
+    try {
+      console.log(`[SETUP] Resolving channel username ${channelUsername} to ID`);
+      const chat = await ctx.telegram.getChat(channelUsername);
+      channelId = chat.id;
+      console.log(`[SETUP] Resolved ${channelUsername} to ID ${channelId}`);
+    } catch (err) {
+      console.error(`[SETUP] Failed to resolve ${channelUsername}:`, err.message);
+      await ctx.reply(`Не получилось найти канал ${channelUsername}. Проверь, что username правильный.`);
+      return;
+    }
+  }
+
   // Check if bot is admin in channel
   try {
-    const member = await ctx.telegram.getChatMember(channelId, ctx.botInfo.id);
-    if (!member || !member.is_administrator) {
-      console.log(`[SETUP] Bot not admin in ${channelId}. Member:`, member);
+    const botId = ctx.botInfo?.id || 8692716874; // Fallback to hardcoded bot ID
+    console.log(`[SETUP] Checking admin in channelId=${channelId}, botId=${botId}`);
+    const member = await ctx.telegram.getChatMember(channelId, botId);
+    console.log(`[SETUP] getChatMember result:`, JSON.stringify(member, null, 2));
+
+    // For channels: check status === 'administrator'
+    // For groups: check is_administrator
+    const isAdmin = member?.status === 'administrator' || member?.is_administrator;
+
+    if (!member || !isAdmin) {
+      console.log(`[SETUP] Bot not admin in ${channelId}. Member status: ${member?.status}, is_administrator: ${member?.is_administrator}`);
       await ctx.reply(
         '❌ Я не администратор в этом канале.\n\n' +
         'Пожалуйста:\n' +
@@ -159,6 +199,15 @@ async function setupChannel(ctx, userId, text) {
       '• Бота удалили из администраторов\n' +
       '• Проблема с доступом\n\n' +
       'Добавь меня админом в канал и повтори.'
+    );
+    return;
+  }
+
+  // Validate channelId before saving
+  if (!channelId) {
+    console.error(`[SETUP] ERROR: channelId is null/undefined after parsing! forward_origin=${ctx.message.forward_origin}, forward_from_chat=${ctx.message.forward_from_chat}, text="${text}"`);
+    await ctx.reply(
+      '❌ Не удалось определить ID канала. Попробуй отправить пересланное сообщение из канала еще раз.'
     );
     return;
   }
